@@ -8,6 +8,7 @@ HOME_DIR="$HOME"
 get_tracked_files() {
     find "$DOTFILES_DIR" -type f \
         -not -path "*/.git/*" \
+        -not -name "README.md" \
         -not -name "sync.sh" | sort
 }
 
