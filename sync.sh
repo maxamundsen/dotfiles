@@ -30,6 +30,24 @@ ensure_dir() {
     fi
 }
 
+get_system_path() {
+    local rel_path="$1"
+
+    # Special case mappings for specific files
+    case "$rel_path" in
+        "global.focus-config")
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                echo "/Users/${USER}/Library/Application Support/dev.focus-editor/global.focus-config"
+            else
+                echo "$HOME_DIR/$rel_path"
+            fi
+            ;;
+        *)
+            echo "$HOME_DIR/$rel_path"
+            ;;
+    esac
+}
+
 copy_file() {
     local src="$1"
     local dest="$2"
@@ -50,7 +68,7 @@ push_dotfiles() {
     local count=0
     while IFS= read -r src_file; do
         rel_path="${src_file#$DOTFILES_DIR/}"
-        dest_file="$HOME_DIR/$rel_path"
+        dest_file="$(get_system_path "$rel_path")"
         copy_file "$src_file" "$dest_file" "Push"
         ((count++))
     done < <(get_tracked_files)
@@ -64,7 +82,7 @@ pull_dotfiles() {
     local count=0
     while IFS= read -r dest_file; do
         rel_path="${dest_file#$DOTFILES_DIR/}"
-        src_file="$HOME_DIR/$rel_path"
+        src_file="$(get_system_path "$rel_path")"
         copy_file "$src_file" "$dest_file" "Pull"
         ((count++))
     done < <(get_tracked_files)
