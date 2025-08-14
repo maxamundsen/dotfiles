@@ -1,0 +1,20 @@
+// Zed keymap
+//
+// For information on binding keys, see the Zed
+// documentation: https://zed.dev/docs/key-bindings
+//
+// To see the default key bindings run `zed: open default keymap`
+// from the command palette.
+[
+  {
+    "bindings": {
+      "f3": "editor::RestartLanguageServer",
+      "f6": "editor::OrganizeImports",
+      "f7": "editor::Format",
+      "f10": "debugger::StepOver",
+      "cmd-shift-a": "editor::SelectAllMatches",
+      "cmd-\\": "workspace::CloseAllDocks",
+      "cmd-|": "workspace::CloseInactiveTabsAndPanes"
+    }
+  }
+]
