@@ -43,6 +43,15 @@ get_system_path() {
                 echo "$HOME_DIR/$rel_path"
             fi
             ;;
+        .config/Code/User/*)
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                # Map .config/Code/User/* to ~/Library/Application Support/Code/User/*
+                local vscode_path="${rel_path#.config/Code/User/}"
+                echo "/Users/${USER}/Library/Application Support/Code/User/${vscode_path}"
+            else
+                echo "$HOME_DIR/$rel_path"
+            fi
+            ;;
         *)
             echo "$HOME_DIR/$rel_path"
             ;;

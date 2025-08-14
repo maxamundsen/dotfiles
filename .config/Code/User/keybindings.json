@@ -1,0 +1,89 @@
+// Place your key bindings in this file to override the defaults
+[
+    {
+        "key": "cmd+=",
+        "command": "-workbench.action.zoomIn"
+    },
+    {
+        "key": "cmd+=",
+        "command": "editor.action.fontZoomIn"
+    },
+    {
+        "key": "cmd+-",
+        "command": "editor.action.fontZoomOut"
+    },
+    {
+        "key": "cmd+-",
+        "command": "-workbench.action.zoomOut"
+    },
+    {
+        "key": "cmd+0",
+        "command": "editor.action.fontZoomReset"
+    },
+    {
+        "key": "cmd+0",
+        "command": "-workbench.action.focusSideBar"
+    },
+    {
+        "key": "cmd+g",
+        "command": "workbench.action.gotoLine"
+    },
+    {
+        "key": "ctrl+g",
+        "command": "-workbench.action.gotoLine"
+    },
+    {
+        "key": "cmd+shift+a",
+        "command": "editor.action.selectHighlights"
+    },
+    {
+        "key": "F7",
+        "command": "editor.action.format"
+    },
+    {
+        "key": "cmd+\\",
+        "command": "runCommands",
+        "args": {
+            "commands": [
+                "workbench.action.closeSidebar",
+                "workbench.action.closePanel",
+            ]
+        }
+    },
+    {
+        "key": "cmd+shift+\\",
+        "command": "runCommands",
+        "args": {
+            "commands": [
+                "workbench.action.closeSidebar",
+                "workbench.action.closePanel",
+                "workbench.action.closeEditorsInOtherGroups",
+                "workbench.action.closeOtherEditors"
+            ]
+        }
+    },
+    {
+        "key": "alt+cmd+backspace",
+        "command": "-editor.action.removeBrackets",
+    },
+    {
+        "key": "f6",
+        "command": "editor.action.organizeImports",
+    },
+    {
+        "key": "shift+alt+o",
+        "command": "-editor.action.organizeImports",
+    },
+    {
+        "key": "f1",
+        "command": "workbench.actions.view.problems",
+    },
+    {
+        "key": "shift+cmd+m",
+        "command": "-workbench.actions.view.problems",
+    },
+    {
+        "key": "f3",
+        "command": "go.languageserver.restart"
+    }
+]
