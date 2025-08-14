@@ -8,9 +8,7 @@ HOME_DIR="$HOME"
 get_tracked_files() {
     find "$DOTFILES_DIR" -type f \
         -not -path "*/.git/*" \
-        -not -name "sync.sh" \
-        -not -name "*.md" \
-        -not -name "*.zip" | sort
+        -not -name "sync.sh" | sort
 }
 
 usage() {
@@ -39,7 +37,7 @@ copy_file() {
 
     if [[ -f "$src" ]]; then
         ensure_dir "$(dirname "$dest")"
-        echo "$action: $src -> $dest"
+        # echo "$action: $src -> $dest"
         cp "$src" "$dest"
     else
         echo "Warning: Source file does not exist: $src"
