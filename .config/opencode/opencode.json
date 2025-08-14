@@ -1,0 +1,11 @@
+{
+  "agent": {
+    "custom": {
+      "permission": {
+        "edit": "ask",
+      },
+      "bash": "ask",
+    }
+  },
+  "$schema": "https://opencode.ai/config.json"
+}
