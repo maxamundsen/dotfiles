@@ -36,18 +36,20 @@ get_system_path() {
 
     # Special case mappings for specific files
     case "$rel_path" in
-        "global.focus-config")
-            if [[ "$OSTYPE" == "darwin"* ]]; then
-                echo "/Users/${USER}/Library/Application Support/dev.focus-editor/global.focus-config"
-            else
-                echo "$HOME_DIR/$rel_path"
-            fi
-            ;;
         .config/Code/User/*)
             if [[ "$OSTYPE" == "darwin"* ]]; then
                 # Map .config/Code/User/* to ~/Library/Application Support/Code/User/*
                 local vscode_path="${rel_path#.config/Code/User/}"
                 echo "/Users/${USER}/Library/Application Support/Code/User/${vscode_path}"
+            else
+                echo "$HOME_DIR/$rel_path"
+            fi
+            ;;
+        .config/focus-editor/*)
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                # Map .config/focus-editor/* to ~/Library/Application Support/dev.focus-editor/*
+                local focus_path="${rel_path#.config/focus-editor/}"
+                echo "/Users/${USER}/Library/Application Support/dev.focus-editor/${focus_path}"
             else
                 echo "$HOME_DIR/$rel_path"
             fi
