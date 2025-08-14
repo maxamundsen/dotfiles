@@ -8,7 +8,6 @@ HOME_DIR="$HOME"
 get_tracked_files() {
     find "$DOTFILES_DIR" -type f \
         -not -path "*/.git/*" \
-        -not -path "*/pack/vendor/*" \
         -not -name "sync.sh" \
         -not -name "*.md" \
         -not -name "*.zip" | sort
@@ -22,11 +21,6 @@ usage() {
     echo "  pull    Copy dotfiles from home directory to this repo"
     echo "  list    Show all tracked dotfiles"
     echo ""
-    echo "Tracked files:"
-    while IFS= read -r file; do
-        rel_path="${file#$DOTFILES_DIR/}"
-        echo "  ~/$rel_path"
-    done < <(get_tracked_files)
     exit 1
 }
 
