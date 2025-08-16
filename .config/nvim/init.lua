@@ -37,8 +37,19 @@ vim.keymap.set("n", "<C-l>", "<C-w>l")
 vim.keymap.set("n", "<C-j>", "<C-w>j")
 vim.keymap.set("n", "<C-k>", "<C-w>k")
 
+vim.keymap.set("n", "<leader>1", "<C-w>h")
+vim.keymap.set("n", "<leader>2", function()
+    if vim.fn.winnr('$') == 1 then
+        vim.cmd('vs')
+        vim.cmd('wincmd l')
+    else
+        vim.cmd('wincmd l')
+    end
+end)
+
 local builtin = require('telescope.builtin')
-vim.keymap.set('n', '<leader>f', builtin.git_files, { desc = 'Telescope: Git find files' })
+vim.keymap.set('n', '<leader>p', builtin.git_files, { desc = 'Telescope: Git find files' })
+vim.keymap.set('n', '<leader>f', builtin.current_buffer_fuzzy_find, { desc = 'Telescope: Fuzzy find in file' })
 
 -- appearance
 
