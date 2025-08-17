@@ -1,6 +1,6 @@
 -- Max Amundsen's Neovim Config
-vim.opt.number = true
-vim.opt.relativenumber = true  -- Show relative line numbers
+vim.opt.number = false
+vim.opt.relativenumber = false  -- Show relative line numbers
 vim.opt.tabstop = 4            -- Number of spaces a tab counts for
 vim.opt.shiftwidth = 4         -- Number of spaces for each indent
 vim.opt.expandtab = true       -- Convert tabs to spaces
@@ -52,4 +52,4 @@ vim.keymap.set('n', '<leader>p', builtin.git_files, { desc = 'Telescope: Git fin
 vim.keymap.set('n', '<leader>f', builtin.current_buffer_fuzzy_find, { desc = 'Telescope: Fuzzy find in file' })
 
 -- appearance
-
+vim.cmd [[colorscheme industry]]
