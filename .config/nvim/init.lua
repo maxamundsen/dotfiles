@@ -46,10 +46,12 @@ vim.keymap.set("n", "<leader>2", function()
         vim.cmd('wincmd l')
     end
 end)
+vim.keymap.set("n", "<leader>0", "<C-w>=", { desc = "Center/equalize all windows" })
 
 local builtin = require('telescope.builtin')
 vim.keymap.set('n', '<leader>p', builtin.git_files, { desc = 'Telescope: Git find files' })
 vim.keymap.set('n', '<leader>f', builtin.current_buffer_fuzzy_find, { desc = 'Telescope: Fuzzy find in file' })
+vim.keymap.set('n', '<leader>F', builtin.grep_string, { desc = 'Telescope: Fuzzy find in file' })
 
 -- appearance
 vim.cmd [[colorscheme industry]]
