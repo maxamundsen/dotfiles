@@ -54,4 +54,4 @@ vim.keymap.set('n', '<leader>f', builtin.current_buffer_fuzzy_find, { desc = 'Te
 vim.keymap.set('n', '<leader>F', builtin.grep_string, { desc = 'Telescope: Fuzzy find in file' })
 
 -- appearance
-vim.cmd [[colorscheme industry]]
+vim.cmd [[colorscheme jellybeans]]
