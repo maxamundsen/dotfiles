@@ -3,8 +3,9 @@
     "custom": {
       "permission": {
         "edit": "ask",
+	"bash": "ask",
+	"webfetch": "ask"
       },
-      "bash": "ask",
     }
   },
   "$schema": "https://opencode.ai/config.json"
