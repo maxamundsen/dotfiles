@@ -31,6 +31,13 @@ vim.keymap.set("n", "<leader>n", ":e ~/.config/nvim/init.lua<CR>")
 vim.keymap.set("n", "<leader>a", "<Esc>ggVG")
 vim.keymap.set("n", "<leader>v", ":vs<cr><C-w>l")
 vim.keymap.set("n", "<leader>h", ":sp<cr><C-w>j")
+vim.keymap.set("n", "<leader>i", function()
+    local filepath = vim.fn.expand('%:p')
+    local line = vim.fn.line('.')
+    local text = filepath .. ':' .. line
+    vim.fn.setreg('+', text)
+    vim.notify('Copied: ' .. text, vim.log.levels.INFO)
+end, { desc = "Copy file path with line number" })
 
 vim.keymap.set("n", "<C-h>", "<C-w>h")
 vim.keymap.set("n", "<C-l>", "<C-w>l")
