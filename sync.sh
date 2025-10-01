@@ -54,6 +54,16 @@ get_system_path() {
                 echo "$HOME_DIR/$rel_path"
             fi
             ;;
+        .config/Sublime\ Text/Packages/User/*|.config/Sublime\ Text/Packages/user/*)
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                # Map .config/Sublime Text/Packages/User/* to ~/Library/Application Support/Sublime Text/Packages/User/*
+                local sublime_path="${rel_path#.config/Sublime\ Text/Packages/User/}"
+                [[ -z "$sublime_path" ]] && sublime_path="${rel_path#.config/Sublime\ Text/Packages/user/}"
+                echo "/Users/${USER}/Library/Application Support/Sublime Text/Packages/User/${sublime_path}"
+            else
+                echo "$HOME_DIR/$rel_path"
+            fi
+            ;;
         *)
             echo "$HOME_DIR/$rel_path"
             ;;

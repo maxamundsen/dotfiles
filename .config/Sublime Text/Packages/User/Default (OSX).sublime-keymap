@@ -1,0 +1,100 @@
+[
+    {
+        "keys": ["home"],
+        "command": "move_to",
+        "args": {"to": "bol", "extend": false}
+    },
+    {
+        "keys": ["end"],
+        "command": "move_to",
+        "args": {"to": "eol", "extend": false}
+    },
+    {
+        "keys": ["shift+home"],
+        "command": "move_to",
+        "args": {"to": "bol", "extend": true}
+    },
+    {
+        "keys": ["shift+end"],
+        "command": "move_to",
+        "args": {"to": "eol", "extend": true}
+    },
+    { "keys": ["super+1"], "command": "focus_group", "args": { "group": 0 } },
+    { "keys": ["super+2"], "command": "focus_group", "args": { "group": 1 } },
+    { "keys": ["super+3"], "command": "focus_group", "args": { "group": 2 } },
+    { "keys": ["super+4"], "command": "focus_group", "args": { "group": 3 } },
+    { "keys": ["super+5"], "command": "focus_group", "args": { "group": 4 } },
+    { "keys": ["super+6"], "command": "focus_group", "args": { "group": 5 } },
+    { "keys": ["super+7"], "command": "focus_group", "args": { "group": 6 } },
+    { "keys": ["super+8"], "command": "focus_group", "args": { "group": 7 } },
+    { "keys": ["super+9"], "command": "focus_group", "args": { "group": 8 } },
+    { "keys": ["super+shift+1"], "command": "move_to_group", "args": { "group": 0 } },
+    { "keys": ["super+shift+2"], "command": "move_to_group", "args": { "group": 1 } },
+    { "keys": ["super+shift+3"], "command": "move_to_group", "args": { "group": 2 } },
+    { "keys": ["super+shift+4"], "command": "move_to_group", "args": { "group": 3 } },
+    { "keys": ["super+shift+5"], "command": "move_to_group", "args": { "group": 4 } },
+    { "keys": ["super+shift+6"], "command": "move_to_group", "args": { "group": 5 } },
+    { "keys": ["super+shift+7"], "command": "move_to_group", "args": { "group": 6 } },
+    { "keys": ["super+shift+8"], "command": "move_to_group", "args": { "group": 7 } },
+    { "keys": ["super+shift+9"], "command": "move_to_group", "args": { "group": 8 } },
+
+    { "keys": ["super+pagedown"], "command": "next_view" },
+    { "keys": ["super+pageup"], "command": "prev_view" },
+
+    { "keys": ["super+g"], "command": "show_overlay", "args": {"overlay": "goto", "text": ":"} },
+
+    { "keys": ["super+shift+a"], "command": "find_all_under" },
+
+    { "keys": ["alt+up"], "command": "swap_line_up" },
+    { "keys": ["alt+down"], "command": "swap_line_down" },
+
+    {
+        "keys": ["shift+f12"],
+        "command": "lsp_symbol_references",
+        "args": {"side_by_side": false, "force_group": true, "fallback": false, "group": -1, "include_declaration": false},
+        "context": [{"key": "lsp.session_with_capability", "operand": "referencesProvider"}]
+    },
+    {
+        "keys": ["f12"],
+        "command": "lsp_symbol_definition",
+        "args": {"side_by_side": false, "force_group": true, "fallback": false, "group": -1},
+        "context": [
+            {"key": "lsp.session_with_capability", "operand": "definitionProvider"},
+            {"key": "auto_complete_visible", "operand": false}
+        ]
+    },
+    {
+        "keys": ["super+r"],
+        "command": "lsp_symbol_rename",
+        "context": [{"key": "lsp.session_with_capability", "operand": "renameProvider"}]
+    },
+    {
+        "keys": ["ctrl+space"],
+        "command": "lsp_commit_completion_with_opposite_insert_mode",
+        "context": [
+            {"key": "lsp.session_with_capability", "operand": "completionProvider"},
+            {"key": "auto_complete_visible"}
+        ]
+    },
+    {
+        "keys": ["super+e"],
+        "command": "copy_filepath_with_line_numbers"
+    },
+    {
+        "keys": ["f1"],
+        "command": "show_panel",
+        "args": {"panel": "output.exec"},
+    },
+    {
+        "keys": ["f2"],
+        "command": "lsp_show_diagnostics_panel",
+    },
+    {
+        "keys": ["f3"],
+        "command": "toggle_terminus_panel",
+    },
+    {
+        "keys": ["super+b"],
+        "command": "hide_panel",
+    },
+]
