@@ -12,6 +12,7 @@
       "f6": "editor::OrganizeImports",
       "f7": "editor::Format",
       "f10": "debugger::StepOver",
+      "f11": "debugger::StepInto",
       "cmd-shift-a": "editor::SelectAllMatches",
       "cmd-\\": "workspace::CloseAllDocks",
       "cmd-|": "workspace::CloseInactiveTabsAndPanes"
