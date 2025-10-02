@@ -12,7 +12,7 @@
 	"auto_complete": false,
 	"tab_completion": false,
 	"mini_diff": false,
-	"theme": "Adaptive.sublime-theme",
+	"theme": "Default Dark.sublime-theme",
 	"ignored_packages":
 	[
 		"Vintage",
