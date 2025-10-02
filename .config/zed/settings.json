@@ -48,7 +48,7 @@
 
   "theme": {
     "mode": "system",
-    "light": "New Darcula",
+    "light": "Bedroom",
     "dark": "New Darcula"
   },
 
@@ -57,9 +57,12 @@
   },
 
   "cursor_shape": "bar",
-  "buffer_font_family": "Zed Plex Mono",
+  "buffer_font_family": "Menlo",
   "format_on_save": "off",
-  "buffer_line_height": "standard",
+  "buffer_line_height": {
+    "custom": 1.15
+  },
+
   "buffer_font_features": {
     "calt": false
   },
