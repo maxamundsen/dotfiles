@@ -1,14 +1,14 @@
 [22]  # Version number. Do not delete.
 
 [colors]
-background0:                            0E131EFF
-background1:                            0E131EFF
-background2:                            0E131EFF
-background3:                            0E131EFF
+background0:                            141B2BFF
+background1:                            141B2BFF
+background2:                            141B2BFF
+background3:                            141B2BFF
 background4:                            2B344AFF
 
 # NOTE: region_scope colors only work for Jai at the moment
-region_scope_export:                    0E131EFF
+region_scope_export:                    141B2BFF
 region_scope_file:                      1F2638FF
 region_scope_module:                    111621FF
 
@@ -22,14 +22,14 @@ selection_active:                       354770FF
 selection_inactive:                     263351FF
 selection_highlight:                    FCEDFC26
 search_result_active:                   8E772EFF
-search_result_inactive:                 FCEDFC26
-scrollbar:                              0E131EFF
+search_result_inactive:                 FCEDFC83
+scrollbar:                              141B2BFF
 scrollbar_hover:                        3C4964FF
 scrollbar_background:                   2B344AFF
-cursor:                                 3DDF23FF
+cursor:                                 9AD3EAFF
 cursor_inactive:                        87919DFF
 paste_animation:                        1C4449FF
-splitter:                               0E131EFF
+splitter:                               141B2BFF
 splitter_hover:                         1F2638FF
 ruler:                                  FCEDFC26
 indent_guide:                           FCEDFC26
@@ -68,21 +68,21 @@ code_char_literal:                      D3B58DFF
 
 code_identifier:                        DADEE5FF
 code_note:                              F9DD03FF
-code_number:                            7FCBCBFF
+code_number:                            BBABC3FF
 
 code_error:                             FF0000FF
 code_warning:                           E4D97DFF
 code_highlight:                         F9DD03FF
 
-code_comment:                           88C0DBFF
-code_multiline_comment:                 88C0DBFF
+code_comment:                           14DED1FF
+code_multiline_comment:                 14DED1FF
 
 code_operation:                         DADEE5FF
 code_punctuation:                       DADEE5FF
 
 code_keyword:                           C47616FF
-code_type:                              14DED1FF
-code_value:                             7FCBCBFF
+code_type:                              85B8DEFF
+code_value:                             BBABC3FF
 code_modifier:                          C47616FF
 code_attribute:                         C47616FF
 code_enum_variant:                      DADEE5FF
@@ -104,14 +104,14 @@ code_header5:                           E0AD82FF
 code_header6:                           E0AD82FF
 
 # Added after migration to version [18]
-active_pane_border:                     88C0DBFF
+active_pane_border:                     2B344AFF
 inactive_pane_dim_overlay:              050505FF
 
 # Added after migration to version [22]
 code_comment_highlight1:                F9DD03FF
 code_comment_highlight2:                FF0000FF
 code_comment_highlight3:                C47616FF
-code_comment_highlight4:                7FCBCBFF
+code_comment_highlight4:                BBABC3FF
 cursor_line_highlight:                  2B344AFF
 color_preview_title_bar:                2B344AFF
 code_addition:                          33B333FF
