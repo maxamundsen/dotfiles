@@ -1,4 +1,4 @@
-[22]  # Version number. Do not delete.
+[25]  # Version number. Do not delete.
 
 [colors]
 background0:                            141B2BFF
@@ -33,7 +33,7 @@ splitter:                               141B2BFF
 splitter_hover:                         1F2638FF
 ruler:                                  FCEDFC26
 indent_guide:                           FCEDFC26
-letter_highlight:                       14DED1FF
+letter_highlight:                       85B8DEFF
 list_cursor_lite:                       3C496488
 list_cursor:                            3C4964FF
 shadow_dark:                            0E161C7F
@@ -41,7 +41,6 @@ shadow_transparent:                     0E161C00
 text_input_label:                       3B4450FF
 char_under_cursor:                      000000FF
 bracket_highlight:                      E8FCFE30
-
 
 ui_default:                             DADEE5FF
 ui_dim:                                 87919DFF
@@ -74,8 +73,8 @@ code_error:                             FF0000FF
 code_warning:                           E4D97DFF
 code_highlight:                         F9DD03FF
 
-code_comment:                           14DED1FF
-code_multiline_comment:                 14DED1FF
+code_comment:                           87919DFF
+code_multiline_comment:                 87919DFF
 
 code_operation:                         DADEE5FF
 code_punctuation:                       DADEE5FF

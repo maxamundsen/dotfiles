@@ -1,4 +1,4 @@
-[22]  # Version number. Do not delete.
+[25]  # Version number. Do not delete.
 
 [[workspace]]
 # These directories and files will be scanned when a workspace is opened so that search etc. works.
@@ -92,6 +92,15 @@ comment_highlight_words1:                        @TODO, TODO, TODO:, NOTE, NOTE:
 comment_highlight_words2:                        @FIXME # words to highlight using `code_comment_highlight2`
 comment_highlight_words3:                        @ROBUSTNESS # words to highlight using `code_comment_highlight3`
 comment_highlight_words4:                        @INCOMPLETE # words to highlight using `code_comment_highlight4`
+
+# Added after migration to version [25]
+enable_temporary_editors:                        true  # when enabled, any editors are opened temporarily until an edit, a save, or a keep_editor command is used. Any newly opened editor will replace the existing temporary editor
+cursor_position_after_jump:                      0.45  # controls where the cursor ends up relatively to the viewport after jumping to a search result or an error. 0.0 is top of the screen, 1.0 - bottom, 0.5 - center
+closing_last_editor_in_pane_should_close_pane:   true
+closing_last_editor_should_exit_program:         false
+show_pane_numbers:                               false
+show_tab_characters_in_selection:                true
+line_endings:                                    preserve  # options: lf, crlf, preserve
 
 # NOTE: some settings can be specified for a subset of files, based on their language or a wildcard,
 # for example:
@@ -248,6 +257,9 @@ Opt-Cmd-L                       toggle_line_numbers
 
 Opt-Cmd-Shift-N                 open_another_editor_instance
 
+# Added after migration to version [25]
+Cmd-Opt-S Enter             keep_editor
+
 
 [open file dialog]
 
@@ -310,7 +322,7 @@ Escape                          escape  # combines close_dialog and remove_addit
 
 Cmd-Shift-L                     toggle_expand
 
-Cmd-B                           build_panel_toggle
+Cmd-B                           toggle_build_panel
 
 Enter                           open_entry
 Cmd-Enter                       open_entry_in_side_pane
