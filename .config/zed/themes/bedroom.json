@@ -170,13 +170,13 @@
             "color": "#DADEE5"
           },
           "boolean": {
-            "color": "#7FCBCB"
+            "color": "#BBABC3"
           },
           "comment": {
-            "color": "#88c0db"
+            "color": "#87919D"
           },
           "comment.doc": {
-            "color": "#88c0db"
+            "color": "#87919D"
           },
           "constant": {
             "color": "#DADEE5"
@@ -215,7 +215,7 @@
             "color": "#7FCBCB"
           },
           "number": {
-            "color": "#7FCBCB"
+            "color": "#BBABC3"
           },
           "operator": {
             "color": "#DADEE5"
@@ -272,7 +272,7 @@
             "color": "#DADEE5"
           },
           "type": {
-            "color": "#DADEE5"
+            "color": "#85B8DE"
           },
           "variable": {
             "color": "#DADEE5"

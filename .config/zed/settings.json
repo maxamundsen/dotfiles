@@ -47,9 +47,9 @@
   "selection_highlight": true,
 
   "theme": {
-    "mode": "system",
-    "light": "Bedroom",
-    "dark": "New Darcula"
+    "mode": "dark",
+    "light": "One Light",
+    "dark": "Bedroom"
   },
 
   "indent_guides": {

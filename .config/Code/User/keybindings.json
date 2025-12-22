@@ -46,6 +46,7 @@
         "args": {
             "commands": [
                 "workbench.action.closeSidebar",
+                "workbench.action.closeAuxiliaryBar",
                 "workbench.action.closePanel",
             ]
         }
@@ -56,6 +57,7 @@
         "args": {
             "commands": [
                 "workbench.action.closeSidebar",
+                "workbench.action.closeAuxiliaryBar",
                 "workbench.action.closePanel",
                 "workbench.action.closeEditorsInOtherGroups",
                 "workbench.action.closeOtherEditors"
@@ -84,6 +86,10 @@
     },
     {
         "key": "f3",
-        "command": "go.languageserver.restart"
+        "command": "workbench.action.toggleLightDarkThemes"
+    },
+    {
+        "key": "shift+cmd+/",
+        "command": "claude-vscode.sidebar.open"
     }
 ]

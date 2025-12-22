@@ -3,7 +3,7 @@
     "search.useParentIgnoreFiles": false,
     "search.useIgnoreFiles": false,
     "problems.visibility": false,
-    "editor.cursorStyle": "line",
+    "editor.cursorStyle": "block",
     "git.openRepositoryInParentFolders": "never",
     "javascript.updateImportsOnFileMove.enabled": "always",
     "explorer.confirmDragAndDrop": false,
@@ -187,4 +187,19 @@
     },
     "git.suggestSmartCommit": false,
     "editor.accessibilitySupport": "off",
+    "claudeCode.preferredLocation": "sidebar",
+    "github.copilot.enable": {
+        "*": false,
+        "plaintext": false,
+        "markdown": false,
+        "scminput": false
+    },
+    "workbench.secondarySideBar.defaultVisibility": "hidden",
+    "inlineChat.lineNaturalLanguageHint": false,
+    "workbench.editor.empty.hint": "hidden",
+    "chat.agent.enabled": false,
+    "chat.disableAIFeatures": true,
+    "workbench.colorTheme": "Default Light+",
+    "workbench.preferredDarkColorTheme": "Visual Studio Dark",
+    "workbench.preferredLightColorTheme": "Visual Studio Light"
 }
