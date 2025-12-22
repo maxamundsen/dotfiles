@@ -1,11 +1,12 @@
 ;;; jai-mode.el --- Major mode for JAI  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015-2023  Kristoffer Grönlund
+;; Copyright (C) 2025  Jen-Chieh Shen
 
 ;; Author: Kristoffer Grönlund <k@ziran.se>
-;; Maintainer: Kristoffer Grönlund <k@ziran.se>
-;; URL: https://github.com/krig/jai-mode
-;; Version: 0.0.1
+;; Maintainer: Jen-Chieh Shen <jcs090218@gmail.com>
+;; URL: https://github.com/elp-revive/jai-mode
+;; Version: 0.1.0
 ;; Package-Requires: ((emacs "26.1"))
 ;; Keywords: languages
 
@@ -225,7 +226,7 @@
 (add-to-list 'auto-mode-alist '("\\.jai\\'" . jai-mode))
 
 (defconst jai--error-regexp
-  "^\\([^ \n:]+.*\.jai\\):\\([0-9]+\\),\\([0-9]+\\):")
+  "\\([^ \n:]+.*\.jai\\):\\([0-9]+\\),\\([0-9]+\\):")
 (push `(jai ,jai--error-regexp 1 2 3 2) compilation-error-regexp-alist-alist)
 (push 'jai compilation-error-regexp-alist)
 

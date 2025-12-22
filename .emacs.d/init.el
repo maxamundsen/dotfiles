@@ -9,15 +9,50 @@
   (normal-top-level-add-subdirs-to-load-path))
 
 (require 'go-mode)
+(add-to-list 'auto-mode-alist '("\\.go\\'" . go-mode))
+(require 'jai-mode)
+(add-to-list 'auto-mode-alist '("\\.jai\\'" . jai-mode))
 (require 'stupid-indent-mode)
 (require 'xah-find)
 
-(setq indent-tabs-mode t)
-(stupid-indent-mode)
-(setq stupid-indent-level 4)
+;; default indentation settings
+(setq-default indent-tabs-mode t)
+(setq-default tab-width 4)
+(setq-default stupid-indent-level 4)
+(add-hook 'text-mode-hook 'stupid-indent-mode)
+(add-hook 'prog-mode-hook 'stupid-indent-mode)
+
+;; per-language indentation settings
+;; (indent-tabs-mode: t = tabs, nil = spaces)
+(add-hook 'go-mode-hook (lambda ()
+                          (setq-local indent-tabs-mode t)
+                          (setq-local tab-width 4)
+                          (setq-local stupid-indent-level 4)))
+
+(add-hook 'jai-mode-hook (lambda ()
+                           (setq-local indent-tabs-mode nil)
+                           (setq-local tab-width 4)
+                           (setq-local stupid-indent-level 4)))
+
+(add-hook 'python-mode-hook (lambda ()
+                              (setq-local indent-tabs-mode nil)
+                              (setq-local tab-width 4)
+                              (setq-local stupid-indent-level 4)))
+
+(add-hook 'js-mode-hook (lambda ()
+                          (setq-local indent-tabs-mode nil)
+                          (setq-local tab-width 2)
+                          (setq-local stupid-indent-level 2)))
+
+(add-hook 'emacs-lisp-mode-hook (lambda ()
+                                  (setq-local indent-tabs-mode nil)
+                                  (setq-local tab-width 2)
+                                  (setq-local stupid-indent-level 2)))
 
 ;; general settings
 (setq-default inhibit-startup-screen t)
+(add-to-list 'default-frame-alist '(width . 140))
+(add-to-list 'default-frame-alist '(height . 50))
 (show-paren-mode 1)
 (delete-selection-mode 1)
 (setq cua-auto-tabify-rectangles nil) ;; Don't tabify after rectangle commands
@@ -41,8 +76,8 @@
 (setq use-dialog-box nil)
 (electric-indent-mode 0)
 (tooltip-mode -1)
-(setq-default select-enable-clipboard nil)
-(setq-default x-select-enable-clipboard nil)
+(setq-default select-enable-clipboard t)
+(setq-default x-select-enable-clipboard t)
 (setq-default backward-delete-char-untabify-method nil)
 (setq ring-bell-function 'ignore)
 (setq custom-file "~/.emacs.d/custom.el") ;; place custom in a separate file
@@ -62,6 +97,7 @@
 
 ;; Keybindings / Keybinds
 ;; global
+(global-set-key (kbd "C-a") 'mark-whole-buffer)
 (global-set-key (kbd "S-<down-mouse-1>") #'my-mouse-start-rectangle)
 (global-set-key (kbd "<f5>") 'revert-buffer-quick)
 (global-set-key (kbd "<f6>") 'my-file-manager-command)
@@ -83,15 +119,21 @@
 (global-set-key (kbd "<f9>") 'bookmark-jump)
 (global-set-key (kbd "<f10>") 'bookmark-set)
 (global-set-key (kbd "<f11>") (lambda () (interactive) (find-file user-init-file)))
-(global-set-key (kbd "<home>") 'move-beginning-of-line)
+(global-set-key (kbd "<home>") 'my-smart-home)
 (global-set-key (kbd "<end>") 'move-end-of-line)
 (setq mac-command-modifier 'control)
 (setq mac-control-modifier 'command)
-(global-set-key (kbd "C-f") 'isearch-forward)
+(when (eq system-type 'darwin)
+  (global-set-key (kbd "C-<left>") 'my-smart-home)
+  (global-set-key (kbd "C-<right>") 'move-end-of-line))
+(global-set-key (kbd "C-f") 'my-isearch-forward)
 (global-set-key (kbd "C-S-f") 'xah-find-text)
 (global-set-key (kbd "C-s") 'save-buffer)
+(global-set-key (kbd "<f3>") 'my-toggle-theme)
 (global-set-key (kbd "<f12>") (lambda () (interactive) (load-file user-init-file)))
 (global-set-key (kbd "C-q") 'save-buffers-kill-terminal)
+(global-set-key (kbd "C-l") 'my-select-line)
+(define-key minibuffer-local-filename-completion-map (kbd "C-2") 'my-find-file-right-pane)
 (define-key isearch-mode-map (kbd "<return>") 'isearch-repeat-forward)
 (define-key isearch-mode-map (kbd "S-<return>") 'isearch-repeat-backward)
 
@@ -126,6 +168,91 @@
 (my-keys-minor-mode 1)
 
 ;; Custom Functions
+
+;; smart home (vscode-style)
+(defun my-smart-home ()
+  "Move to first non-whitespace char, or beginning of line if already there."
+  (interactive "^")
+  (let ((orig-point (point)))
+    (back-to-indentation)
+    (when (= orig-point (point))
+      (move-beginning-of-line 1))))
+
+;; isearch with selection (vscode-style)
+(defun my-isearch-forward ()
+  "Start isearch, using selected text if region is active."
+  (interactive)
+  (if (use-region-p)
+      (let ((text (buffer-substring-no-properties (region-beginning) (region-end))))
+        (deactivate-mark)
+        (isearch-forward nil 1)
+        (setq isearch-string text
+              isearch-message text)
+        (isearch-update))
+    (isearch-forward)))
+
+;; select whole line (vscode-style)
+(defun my-select-line ()
+  "Select the current line. Repeat to select subsequent lines."
+  (interactive)
+  (if (and (use-region-p) (eq last-command 'my-select-line))
+      (forward-line 1)
+    (move-beginning-of-line 1)
+    (set-mark (point))
+    (forward-line 1)))
+
+;; open file in right pane from minibuffer
+(defvar my--find-file-right-pane nil)
+
+(defun my-find-file-right-pane ()
+  "Open file in right pane from find-file minibuffer."
+  (interactive)
+  (setq my--find-file-right-pane (expand-file-name (minibuffer-contents)))
+  (abort-recursive-edit))
+
+(defun my-find-file-right-pane-after ()
+  "Actually open the file in right pane."
+  (when my--find-file-right-pane
+    (let ((file my--find-file-right-pane))
+      (setq my--find-file-right-pane nil)
+      (when (one-window-p)
+        (split-window-right))
+      (other-window 1)
+      (find-file file))))
+
+(add-hook 'minibuffer-exit-hook 'my-find-file-right-pane-after)
+
+;; theme toggle (dark/light)
+(defvar my-dark-theme-p t "Non-nil if dark theme is active.")
+
+(defun my-set-dark-theme ()
+  "Apply dark color theme."
+  (set-face-attribute 'default nil :foreground "#d3b58d" :background "#181E2C")
+  (set-face-attribute 'font-lock-comment-face nil :foreground "#bf9319")
+  (set-face-attribute 'font-lock-string-face nil :foreground "#8fcddb")
+  (set-face-attribute 'font-lock-keyword-face nil :foreground "white")
+  (set-face-attribute 'font-lock-function-name-face nil :foreground "white")
+  (set-face-attribute 'font-lock-variable-name-face nil :foreground "#c8d4ec")
+  (set-face-attribute 'region nil :background "blue")
+  (set-cursor-color "lightgreen"))
+
+(defun my-set-light-theme ()
+  "Apply light color theme."
+  (set-face-attribute 'default nil :foreground "#2E3440" :background "#FFFEF9")
+  (set-face-attribute 'font-lock-comment-face nil :foreground "#8B7355")
+  (set-face-attribute 'font-lock-string-face nil :foreground "#2E8B57")
+  (set-face-attribute 'font-lock-keyword-face nil :foreground "#0000CD")
+  (set-face-attribute 'font-lock-function-name-face nil :foreground "#8B0000")
+  (set-face-attribute 'font-lock-variable-name-face nil :foreground "#483D8B")
+  (set-face-attribute 'region nil :background "#ADD8E6")
+  (set-cursor-color "black"))
+
+(defun my-toggle-theme ()
+  "Toggle between dark and light themes."
+  (interactive)
+  (if my-dark-theme-p
+      (progn (my-set-light-theme) (setq my-dark-theme-p nil))
+    (my-set-dark-theme) (setq my-dark-theme-p t)))
 
 ;; global zoom
 (defvar my-default-font-height (face-attribute 'default :height))
@@ -266,24 +393,16 @@ Use in `isearch-mode-end-hook'."
 ;; appearance
 ;; (set-face-attribute 'default nil :font "Consolas-15")
 
-;; the name of my emacs color scheme
+;; non-theme-specific face customizations
 (custom-set-faces
- '(default ((t (:foreground "#d3b58d" :background "#181E2C"))))
  '(custom-group-tag-face ((t (:underline t :foreground "lightblue"))) t)
  '(custom-variable-tag-face ((t (:underline t :foreground "lightblue"))) t)
  '(font-lock-builtin-face ((t nil)))
- '(font-lock-comment-face ((t (:foreground "#bf9319"))))
- '(font-lock-function-name-face ((((class color) (background dark)) (:foreground "white"))))
- '(font-lock-keyword-face ((t (:foreground "white" ))))
- '(font-lock-string-face ((t (:foreground "#8fcddb"))))
- '(font-lock-variable-name-face ((((class color) (background dark)) (:foreground "#c8d4ec"))))
  '(font-lock-warning-face ((t (:foreground "#504038"))))
  '(highlight ((t (:foreground "navyblue" :background "darkseagreen2"))))
  '(mode-line ((t (:inverse-video t))))
- '(region ((t (:background "blue"))))
  '(widget-field-face ((t (:foreground "white"))) t)
  '(widget-single-line-field-face ((t (:background "darkgray"))) t))
 
-(set-background-color "#181E2C")
 (global-font-lock-mode 1)
-(set-cursor-color "lightgreen")
+(my-set-dark-theme)

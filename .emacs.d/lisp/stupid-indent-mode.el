@@ -36,7 +36,6 @@
 ;; C-c C-TAB -- indent according to mode
 
 ;;; Code:
-
 (defcustom stupid-indent-level 2
   "Indentation level for stupid-indent-mode")
 
@@ -55,7 +54,7 @@
              (back-to-indentation)
              (current-column))))
     (cond
-      k((< (current-column) bt)
+      ((< (current-column) bt)
        (back-to-indentation))
       ((looking-at "\\s-*\n")
        (let ((col (save-excursion
