@@ -55,7 +55,7 @@
              (back-to-indentation)
              (current-column))))
     (cond
-      ((< (current-column) bt)
+      k((< (current-column) bt)
        (back-to-indentation))
       ((looking-at "\\s-*\n")
        (let ((col (save-excursion

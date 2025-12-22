@@ -8,10 +8,13 @@
 (let ((default-directory "~/.emacs.d/lisp/"))
   (normal-top-level-add-subdirs-to-load-path))
 
-  (setq indent-tabs-mode t)
-  (stupid-indent-mode)
-  (setq-local stupid-indent-level 4)
-))
+(require 'go-mode)
+(require 'stupid-indent-mode)
+(require 'xah-find)
+
+(setq indent-tabs-mode t)
+(stupid-indent-mode)
+(setq stupid-indent-level 4)
 
 ;; general settings
 (setq-default inhibit-startup-screen t)
@@ -64,7 +67,8 @@
 (global-set-key (kbd "<f6>") 'my-file-manager-command)
 (global-set-key (kbd "<C-f6>") 'my-terminal-emulator-command)
 (global-set-key [f8] 'goto-line)
-(global-set-key (kbd "C-\\") 'my-transpose-windows)
+(global-set-key (kbd "C-\\") 'split-window-below)
+(global-set-key (kbd "C-|") 'split-window-right)
 (global-unset-key (kbd "C-x C-SPC"))
 (global-set-key (kbd "C-x C-SPC") 'rectangle-mark-mode)
 (global-set-key [C-return] 'save-buffer)
@@ -73,12 +77,23 @@
 (global-set-key (kbd "C-;") 'comment-line)
 (global-set-key (kbd "M-<f4>") 'save-buffers-kill-terminal) ;; windows thing
 (global-set-key (kbd "C-y") 'clipboard-yank) ;; fix killring messing with system clipboard
-(global-set-key (kbd "C-w") 'clipboard-kill-region)
+(global-set-key (kbd "C-w") 'delete-window)
 (global-set-key (kbd "M-w") 'clipboard-kill-ring-save)
 (global-set-key (kbd "M-j") 'my-duplicate-line)
 (global-set-key (kbd "<f9>") 'bookmark-jump)
 (global-set-key (kbd "<f10>") 'bookmark-set)
-(global-set-key (kbd "<f11>") 'bookmark-delete)
+(global-set-key (kbd "<f11>") (lambda () (interactive) (find-file user-init-file)))
+(global-set-key (kbd "<home>") 'move-beginning-of-line)
+(global-set-key (kbd "<end>") 'move-end-of-line)
+(setq mac-command-modifier 'control)
+(setq mac-control-modifier 'command)
+(global-set-key (kbd "C-f") 'isearch-forward)
+(global-set-key (kbd "C-S-f") 'xah-find-text)
+(global-set-key (kbd "C-s") 'save-buffer)
+(global-set-key (kbd "<f12>") (lambda () (interactive) (load-file user-init-file)))
+(global-set-key (kbd "C-q") 'save-buffers-kill-terminal)
+(define-key isearch-mode-map (kbd "<return>") 'isearch-repeat-forward)
+(define-key isearch-mode-map (kbd "S-<return>") 'isearch-repeat-backward)
 
 ;; custom bind minor mode
 ;; this allows binding keys that override all other modes
@@ -87,12 +102,13 @@
   (define-key map (kbd "M-p") 'backward-paragraph)
   (define-key map (kbd "M-n") 'forward-paragraph)
   (define-key map (kbd "C-o") 'next-multiframe-window)
-  (define-key map [?\C-0] 'delete-window)
-  (define-key map [?\C-1] 'delete-other-windows)
-  (define-key map [?\C-2] 'split-window-vertically)
-  (define-key map [?\C-3] 'split-window-horizontally)
-  (define-key map [?\C-4] 'find-file-at-point)
-  (define-key map [?\C-5] 'switch-to-buffer)
+  (define-key map (kbd "C-1") (lambda () (interactive) (select-window (frame-first-window))))
+  (define-key map (kbd "C-2") (lambda () (interactive)
+                                (if (one-window-p)
+                                    (progn (split-window-right) (other-window 1))
+                                  (other-window 1))))
+  (define-key map (kbd "C-3") 'switch-to-buffer)
+  (define-key map (kbd "C-4") 'find-file)
   (define-key map (kbd "C-j") 'dabbrev-expand)
     map)
   "my-keys-minor-mode keymap.")
@@ -110,6 +126,28 @@
 (my-keys-minor-mode 1)
 
 ;; Custom Functions
+
+;; global zoom
+(defvar my-default-font-height (face-attribute 'default :height))
+
+(defun my-global-zoom-in ()
+  (interactive)
+  (set-face-attribute 'default nil :height (+ (face-attribute 'default :height) 10)))
+
+(defun my-global-zoom-out ()
+  (interactive)
+  (set-face-attribute 'default nil :height (- (face-attribute 'default :height) 10)))
+
+(defun my-global-zoom-reset ()
+  (interactive)
+  (set-face-attribute 'default nil :height my-default-font-height))
+
+(global-set-key (kbd "C-=") 'my-global-zoom-in)
+(global-set-key (kbd "C--") 'my-global-zoom-out)
+(global-set-key (kbd "C-0") 'my-global-zoom-reset)
+(global-unset-key (kbd "C-x C-="))
+(global-unset-key (kbd "C-x C--"))
+(global-unset-key (kbd "C-x C-0"))
 
 ;; test function
 (defun my-test ()
