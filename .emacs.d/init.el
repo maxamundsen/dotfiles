@@ -14,6 +14,7 @@
 (add-to-list 'auto-mode-alist '("\\.jai\\'" . jai-mode))
 (require 'stupid-indent-mode)
 (require 'xah-find)
+(require 'multiple-cursors)
 
 ;; default indentation settings
 (setq-default indent-tabs-mode t)
@@ -51,8 +52,8 @@
 
 ;; general settings
 (setq-default inhibit-startup-screen t)
-(add-to-list 'default-frame-alist '(width . 140))
-(add-to-list 'default-frame-alist '(height . 50))
+(add-to-list 'default-frame-alist '(width . 200))
+(add-to-list 'default-frame-alist '(height . 75))
 (show-paren-mode 1)
 (delete-selection-mode 1)
 (setq cua-auto-tabify-rectangles nil) ;; Don't tabify after rectangle commands
@@ -118,7 +119,7 @@
 (global-set-key (kbd "M-j") 'my-duplicate-line)
 (global-set-key (kbd "<f9>") 'bookmark-jump)
 (global-set-key (kbd "<f10>") 'bookmark-set)
-(global-set-key (kbd "<f11>") (lambda () (interactive) (find-file user-init-file)))
+(global-set-key (kbd "<f11>") 'toggle-frame-maximized)
 (global-set-key (kbd "<home>") 'my-smart-home)
 (global-set-key (kbd "<end>") 'move-end-of-line)
 (setq mac-command-modifier 'control)
@@ -136,6 +137,19 @@
 (define-key minibuffer-local-filename-completion-map (kbd "C-2") 'my-find-file-right-pane)
 (define-key isearch-mode-map (kbd "<return>") 'isearch-repeat-forward)
 (define-key isearch-mode-map (kbd "S-<return>") 'isearch-repeat-backward)
+(define-key isearch-mode-map (kbd "<backspace>") 'isearch-del-char)
+(setq isearch-wrap-pause 'no)
+
+;; multiple cursors (vscode-style)
+(setq mc/always-run-for-all t)
+(global-set-key (kbd "C-d") 'mc/mark-next-like-this-word)
+(global-set-key (kbd "C-S-d") 'mc/mark-previous-like-this-word)
+(global-set-key (kbd "C-S-a") 'mc/mark-all-like-this)
+(global-set-key (kbd "C-S-<mouse-1>") 'mc/add-cursor-on-click)
+(global-set-key (kbd "C-M-<up>") (lambda () (interactive) (mc/mark-previous-lines 1)))
+(global-set-key (kbd "C-M-<down>") (lambda () (interactive) (mc/mark-next-lines 1)))
+(define-key mc/keymap (kbd "<escape>") 'mc/keyboard-quit)
+(define-key mc/keymap (kbd "<return>") nil)
 
 ;; custom bind minor mode
 ;; this allows binding keys that override all other modes
@@ -160,7 +174,7 @@
   :init-value t
   :lighter "")
 
-;; don't enable override keymap in minibuf
+;; don't enable override keymap in minibuffer
 (defun my-minibuffer-setup-hook ()
  (my-keys-minor-mode 0))
 (add-hook 'minibuffer-setup-hook 'my-minibuffer-setup-hook)
@@ -238,7 +252,7 @@
 
 (defun my-set-light-theme ()
   "Apply light color theme."
-  (set-face-attribute 'default nil :foreground "#2E3440" :background "#FFFEF9")
+  (set-face-attribute 'default nil :foreground "#2E3440" :background "honeydew")
   (set-face-attribute 'font-lock-comment-face nil :foreground "#8B7355")
   (set-face-attribute 'font-lock-string-face nil :foreground "#2E8B57")
   (set-face-attribute 'font-lock-keyword-face nil :foreground "#0000CD")
@@ -254,7 +268,8 @@
       (progn (my-set-light-theme) (setq my-dark-theme-p nil))
     (my-set-dark-theme) (setq my-dark-theme-p t)))
 
-;; global zoom
+;; global zoom (without resizing window)
+(setq frame-inhibit-implied-resize t)
 (defvar my-default-font-height (face-attribute 'default :height))
 
 (defun my-global-zoom-in ()
@@ -321,9 +336,11 @@
 (defun my-file-manager-command ()
   (interactive)
   (cond ((eq system-type 'windows-nt)
-     (shell-command "explorer.exe ."))
-    ((eq system-type 'gnu/linux)
-     (shell-command "setsid -f nautilus . >/dev/null 2>&1"))))
+         (shell-command "explorer.exe ."))
+        ((eq system-type 'darwin)
+         (shell-command "open ."))
+        ((eq system-type 'gnu/linux)
+         (shell-command "setsid -f nautilus . >/dev/null 2>&1"))))
 
 ;; open terminal or cmd prompt
 (defun my-terminal-emulator-command ()
@@ -403,6 +420,8 @@ Use in `isearch-mode-end-hook'."
  '(mode-line ((t (:inverse-video t))))
  '(widget-field-face ((t (:foreground "white"))) t)
  '(widget-single-line-field-face ((t (:background "darkgray"))) t))
+
+(add-to-list 'default-frame-alist '(cursor-color . "lightgreen"))
 
 (global-font-lock-mode 1)
 (my-set-dark-theme)
