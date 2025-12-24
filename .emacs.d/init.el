@@ -67,8 +67,8 @@
 
 (add-hook 'js-mode-hook (lambda ()
                           (setq-local indent-tabs-mode nil)
-                          (setq-local tab-width 2)
-                          (setq-local stupid-indent-level 2)))
+                          (setq-local tab-width 4)
+                          (setq-local stupid-indent-level 4)))
 
 (add-hook 'emacs-lisp-mode-hook (lambda ()
                                   (setq-local indent-tabs-mode nil)
@@ -224,7 +224,7 @@
 (global-set-key (kbd "C-x C-SPC") 'rectangle-mark-mode)
 (global-set-key [?\C-z] 'undo)
 (global-set-key (kbd "C-*") 'search-current-word)
-(global-set-key (kbd "C-/") 'comment-line)
+(global-set-key (kbd "C-/") 'my-toggle-comment)
 (global-set-key (kbd "M-<f4>") 'save-buffers-kill-terminal) ;; windows thing
 (global-set-key (kbd "C-y") 'clipboard-yank) ;; fix killring messing with system clipboard
 (global-set-key (kbd "C-w") 'delete-window)
@@ -265,7 +265,14 @@
 (define-key isearch-mode-map (kbd "S-<return>") 'isearch-repeat-backward)
 (define-key isearch-mode-map (kbd "<backspace>") 'isearch-del-char)
 (define-key isearch-mode-map (kbd "<escape>") 'isearch-exit)
-(define-key isearch-mode-map (kbd "C-g") 'isearch-exit)
+(define-key isearch-mode-map (kbd "C-g") 'my-isearch-cancel-or-exit)
+
+(defun my-isearch-cancel-or-exit ()
+  "Cancel isearch if search string is empty, otherwise exit at current position."
+  (interactive)
+  (if (string= isearch-string "")
+      (isearch-cancel)
+    (isearch-exit)))
 (setq isearch-wrap-pause 'no)
 
 ;; multiple cursors (vscode-style)
@@ -336,6 +343,17 @@
 (my-keys-minor-mode 1)
 
 ;; Custom Functions
+
+;; toggle comment (vscode-style)
+(defun my-toggle-comment ()
+  "Toggle comment on line or region without moving point."
+  (interactive)
+  (let* ((region-active (use-region-p))
+         (start (if region-active (region-beginning) (line-beginning-position)))
+         (end (if region-active (region-end) (line-end-position))))
+    (comment-or-uncomment-region start end)
+    (when region-active
+      (setq deactivate-mark nil))))
 
 ;; smart home (vscode-style)
 (defun my-smart-home ()
@@ -519,17 +537,27 @@
 
 ;; theme selection
 (add-to-list 'custom-theme-load-path "~/.emacs.d/themes/")
-(defvar my-current-theme 'jbeans "Currently active theme.")
+(defvar my-current-theme 'bedroom "Currently active theme.")
 
 (defun my-select-theme ()
   "Select and load a theme from all available themes."
   (interactive)
-  (let* ((themes (mapcar #'symbol-name (custom-available-themes)))
+  (let* ((themes (append '("default" "default-dark") (mapcar #'symbol-name (custom-available-themes))))
          (choice (completing-read "Theme: " themes nil t)))
     (when my-current-theme
       (disable-theme my-current-theme))
-    (setq my-current-theme (intern choice))
-    (load-theme my-current-theme t)))
+    (cond
+     ((string= choice "default")
+      (set-foreground-color "black")
+      (set-background-color "white")
+      (setq my-current-theme nil))
+     ((string= choice "default-dark")
+      (set-foreground-color "white")
+      (set-background-color "black")
+      (setq my-current-theme nil))
+     (t
+      (setq my-current-theme (intern choice))
+      (load-theme my-current-theme t)))))
 
 ;; global zoom (without resizing window)
 (setq frame-inhibit-implied-resize t)
@@ -608,10 +636,10 @@
             (let ((pid (process-id proc)))
               (when pid
                 (my-kill-process-tree pid)))
-            (set-process-query-on-exit-flag proc t))
-          (with-current-buffer buf
-            (set-buffer-modified-p nil))
-          (kill-buffer buf)))))
+            (set-process-query-on-exit-flag proc nil)))
+        (with-current-buffer buf
+          (set-buffer-modified-p nil))
+        (kill-buffer buf))))
   (setq recentf-list nil)
   (delete-other-windows))
 
@@ -737,4 +765,4 @@ Use in `isearch-mode-end-hook'."
 ;; (set-face-attribute 'default nil :font "Consolas-15")
 
 (global-font-lock-mode 1)
-(load-theme 'jbeans t)
+(load-theme 'bedroom t)
