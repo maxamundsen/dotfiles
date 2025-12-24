@@ -8,6 +8,9 @@
 (let ((default-directory "~/.emacs.d/lisp/"))
   (normal-top-level-add-subdirs-to-load-path))
 
+(require 'yaml-mode)
+(add-to-list 'auto-mode-alist '("\\.yml\\'" . yaml-mode))
+(require 'dockerfile-mode)
 (require 'go-mode)
 (add-to-list 'auto-mode-alist '("\\.go\\'" . go-mode))
 (require 'jai-mode)
@@ -20,20 +23,23 @@
 (require 's)
 (require 'dash)
 (require 'popup)
+;; ctags for xref, with dumb-jump as fallback
 (require 'dumb-jump)
 (setq dumb-jump-force-searcher 'grep)
-(add-hook 'xref-backend-functions #'dumb-jump-xref-activate)
 (setq xref-show-definitions-function #'xref-show-definitions-completing-read)
+(add-hook 'xref-backend-functions #'dumb-jump-xref-activate 100)
 
-;; undo-tree for persistent undo/redo
-(require 'queue)
-(require 'undo-tree)
-(global-undo-tree-mode)
-(setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo-tree-history/")))
-(setq undo-tree-auto-save-history t)
+;; vundo for visual undo tree
+(require 'vundo)
 (ivy-mode 1)
 (setq ivy-use-virtual-buffers t)
 (setq ivy-count-format "(%d/%d) ")
+(setq ivy-wrap t)
+
+;; dired: mouse click opens in same window
+(add-hook 'dired-mode-hook
+          (lambda ()
+            (define-key dired-mode-map [mouse-2] 'dired-find-file)))
 
 ;; default indentation settings
 (setq-default indent-tabs-mode t)
@@ -73,10 +79,10 @@
 (setq-default inhibit-startup-screen t)
 
 ;; bottom panel settings (compilation, xref, etc.)
-(setq compilation-scroll-output t)
+(setq compilation-scroll-output -1)
 
 ;; bottom panel buffer patterns
-(defvar my-bottom-panel-buffers '("\\*compilation\\*" "\\*xref\\*" "\\*terminal")
+(defvar my-bottom-panel-buffers '("\\*compilation\\*" "\\*xref\\*")
   "List of buffer name patterns for bottom panel.")
 
 (defun my-bottom-panel-buffer-p (buf)
@@ -112,53 +118,6 @@
 (add-to-list 'display-buffer-alist
              '("\\*xref\\*" (my-display-in-bottom-panel) (window-height . 0.25)))
 
-;; tab line for bottom panel
-(defun my-bottom-panel-tab-line ()
-  "Return tab line tabs for bottom panel buffers."
-  (seq-filter #'my-bottom-panel-buffer-p (buffer-list)))
-
-(defun my-enable-bottom-panel-tabs ()
-  "Enable tab-line-mode for bottom panel buffers."
-  (setq-local tab-line-tabs-function #'my-bottom-panel-tab-line)
-  (tab-line-mode 1))
-
-(add-hook 'compilation-mode-hook #'my-enable-bottom-panel-tabs)
-(add-hook 'xref--xref-buffer-mode-hook #'my-enable-bottom-panel-tabs)
-(add-hook 'term-mode-hook #'my-enable-bottom-panel-tabs)
-
-(defvar my-terminal-counter 0 "Counter for terminal instances.")
-
-(defun my-get-shell ()
-  "Get the shell program for the current platform."
-  (cond ((eq system-type 'darwin) "/bin/zsh")
-        ((eq system-type 'gnu/linux) "/bin/bash")
-        ((eq system-type 'windows-nt) "powershell")
-        (t "/bin/sh")))
-
-(defun my-open-terminal ()
-  "Open first terminal in bottom panel, or create one if none exist."
-  (interactive)
-  (let ((existing (seq-find (lambda (buf)
-                              (string-match-p "\\*terminal" (buffer-name buf)))
-                            (buffer-list))))
-    (if existing
-        (let ((win (my-display-in-bottom-panel existing '((window-height . 0.25)))))
-          (when win (select-window win)))
-      (my-open-terminal-new))))
-
-(defun my-open-terminal-new ()
-  "Open a new terminal instance in bottom panel."
-  (interactive)
-  (let* ((default-directory (or (and (project-current)
-                                     (project-root (project-current)))
-                                default-directory))
-         (name (format "terminal-%d" (setq my-terminal-counter (1+ my-terminal-counter))))
-         (buf (make-term name (my-get-shell))))
-    (with-current-buffer buf
-      (term-mode)
-      (term-char-mode))
-    (let ((win (my-display-in-bottom-panel buf '((window-height . 0.25)))))
-      (when win (select-window win)))))
 
 (defun my-bottom-panel-toggle ()
   "Toggle the bottom panel. Close if visible, open if hidden."
@@ -172,28 +131,9 @@
                                            my-bottom-panel-buffers))
                                (buffer-list))))
         (if matching-buffers
-            (let ((win (my-display-in-bottom-panel (car matching-buffers) '((window-height . 0.25)))))
-              (when (and win (string-match-p "\\*terminal" (buffer-name (car matching-buffers))))
-                (select-window win)))
+            (my-display-in-bottom-panel (car matching-buffers) '((window-height . 0.25)))
           (message "No bottom panel buffers open."))))))
 
-(defun my-bottom-panel-next ()
-  "Cycle to next bottom panel buffer in bottom window."
-  (interactive)
-  (let* ((matching-buffers (seq-filter
-                            (lambda (buf)
-                              (seq-some (lambda (pat) (string-match-p pat (buffer-name buf)))
-                                        my-bottom-panel-buffers))
-                            (buffer-list)))
-         (bottom-window (seq-find (lambda (w) (window-at-side-p w 'bottom)) (window-list)))
-         (current (and bottom-window (window-buffer bottom-window)))
-         (idx (and current (seq-position matching-buffers current))))
-    (if (and matching-buffers bottom-window)
-        (let ((next-buf (if idx
-                            (nth (mod (1+ idx) (length matching-buffers)) matching-buffers)
-                          (car matching-buffers))))
-          (set-window-buffer bottom-window next-buf))
-      (message "No bottom panel buffers open."))))
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 (show-paren-mode 1)
 (delete-selection-mode 1)
@@ -203,6 +143,11 @@
 (menu-bar-mode -1)
 (scroll-bar-mode -1)
 (tool-bar-mode -1)
+(context-menu-mode -1)
+(global-set-key [mouse-3] 'ignore)
+(global-set-key [down-mouse-3] 'ignore)
+(global-set-key [C-down-mouse-1] 'ignore)
+(global-set-key [C-down-mouse-3] 'ignore)
 (global-auto-revert-mode t)
 (electric-pair-mode -1)
 (setq ns-pop-up-frames nil)
@@ -258,7 +203,7 @@
                 (let ((pid (process-id proc)))
                   (when pid
                     (my-kill-process-tree pid)))
-                (set-process-query-on-exit-flag proc nil)
+                (set-process-query-on-exit-flag proc t)
                 (ignore-errors (delete-process proc))))))
 
 ;; Keybindings / Keybinds
@@ -269,18 +214,14 @@
 (global-set-key (kbd "<f5>") 'my-compile-last)
 (global-set-key (kbd "<C-S-f5>") 'my-compile-custom)
 (global-set-key (kbd "<f1>") 'my-bottom-panel-toggle)
-(global-set-key (kbd "<f2>") 'my-bottom-panel-next)
-(global-set-key (kbd "C-`") 'my-open-terminal)
-(global-set-key (kbd "C-~") 'my-open-terminal-new)
 (global-set-key (kbd "<f6>") 'my-file-manager-command)
 (global-set-key (kbd "<f7>") 'project-switch-project)
 (global-set-key (kbd "<C-f6>") 'my-terminal-emulator-command)
 (global-set-key [f8] 'goto-line)
-(global-set-key (kbd "C-\\") 'delete-other-windows)
-(global-set-key (kbd "C-|") 'kill-all-buffers)
+(global-set-key (kbd "C-\\") 'split-window-below)
+(global-set-key (kbd "C-|") 'split-window-right)
 (global-unset-key (kbd "C-x C-SPC"))
 (global-set-key (kbd "C-x C-SPC") 'rectangle-mark-mode)
-(global-set-key [C-return] 'save-buffer)
 (global-set-key [?\C-z] 'undo)
 (global-set-key (kbd "C-*") 'search-current-word)
 (global-set-key (kbd "C-/") 'comment-line)
@@ -296,36 +237,6 @@
 (global-set-key (kbd "<end>") 'move-end-of-line)
 (setq mac-command-modifier 'control)
 (setq mac-control-modifier 'command)
-
-;; Restore normal cmd/ctrl in terminal buffers on macOS
-(when (eq system-type 'darwin)
-  (add-hook 'term-mode-hook
-            (lambda ()
-              (setq-local mac-command-modifier 'super)
-              (setq-local mac-control-modifier 'control))))
-
-;; Enable paste in terminal (Cmd-v on macOS, C-S-v elsewhere)
-(add-hook 'term-mode-hook
-          (lambda ()
-            (if (eq system-type 'darwin)
-                (define-key term-raw-map (kbd "s-v") 'term-paste)
-              (define-key term-raw-map (kbd "C-S-v") 'term-paste))))
-
-;; F5 in terminal: Ctrl-C, rebuild, enter, r, enter, c, enter
-(defun my-term-rebuild ()
-  "Send rebuild sequence to terminal."
-  (interactive)
-  (term-send-raw-string "\C-c")
-  (sit-for 0.1)
-  (term-send-raw-string "rebuild\r")
-  (sit-for 0.1)
-  (term-send-raw-string "r\r")
-  (sit-for 0.1)
-  (term-send-raw-string "c\r"))
-
-(add-hook 'term-mode-hook
-          (lambda ()
-            (define-key term-raw-map (kbd "<f5>") 'my-term-rebuild)))
 
 ;; Kill terminal buffer when process exits
 (defun my-term-handle-exit (&optional process-name msg)
@@ -354,13 +265,11 @@
 (define-key isearch-mode-map (kbd "S-<return>") 'isearch-repeat-backward)
 (define-key isearch-mode-map (kbd "<backspace>") 'isearch-del-char)
 (define-key isearch-mode-map (kbd "<escape>") 'isearch-exit)
+(define-key isearch-mode-map (kbd "C-g") 'isearch-exit)
 (setq isearch-wrap-pause 'no)
 
 ;; multiple cursors (vscode-style)
 (setq mc/always-run-for-all t)
-(global-set-key (kbd "C-d") 'mc/mark-next-like-this-word)
-(global-set-key (kbd "C-S-d") 'mc/mark-previous-like-this-word)
-(global-set-key (kbd "C-S-a") 'mc/mark-all-like-this)
 (global-set-key (kbd "C-S-<mouse-1>") 'mc/add-cursor-on-click)
 (global-set-key (kbd "C-M-<up>") (lambda () (interactive) (mc/mark-previous-lines 1)))
 (global-set-key (kbd "C-M-<down>") (lambda () (interactive) (mc/mark-next-lines 1)))
@@ -407,6 +316,10 @@
   (define-key map (kbd "C-3") 'switch-to-buffer)
   (define-key map (kbd "C-4") 'find-file)
   (define-key map (kbd "C-j") 'dabbrev-expand)
+  ;; multiple cursors (override major modes)
+  (define-key map (kbd "C-d") 'mc/mark-next-like-this-word)
+  (define-key map (kbd "C-S-d") 'mc/mark-previous-like-this-word)
+  (define-key map (kbd "C-S-a") 'mc/mark-all-like-this)
     map)
   "my-keys-minor-mode keymap.")
 
@@ -437,7 +350,9 @@
 (defun my-project-find-text ()
   "Search for literal text in project."
   (interactive)
-  (let ((text (read-string "Search in project: ")))
+  (let* ((initial (when (use-region-p)
+                    (buffer-substring-no-properties (region-beginning) (region-end))))
+         (text (read-string "Search in project: " initial)))
     (project-find-regexp (regexp-quote text))))
 
 (defun my-project-find-word-at-point ()
@@ -498,6 +413,46 @@
     (if cmd
         (compile cmd)
       (my-compile-custom))))
+
+;; ctags (persisted per-project)
+(defun my-tags-get-saved ()
+  "Get saved TAGS file path for current project."
+  (when (project-current)
+    (let ((file (my-project-data-file "tags-file")))
+      (when (file-exists-p file)
+        (with-temp-buffer
+          (insert-file-contents file)
+          (string-trim (buffer-string)))))))
+
+(defun my-tags-save (tags-path)
+  "Save TAGS file path for current project."
+  (when (project-current)
+    (let ((file (my-project-data-file "tags-file")))
+      (with-temp-file file
+        (insert tags-path)))))
+
+(defun my-tags-load ()
+  "Load saved TAGS file for current project."
+  (let ((saved (my-tags-get-saved)))
+    (when (and saved (file-exists-p saved))
+      (visit-tags-table saved t))))
+
+(add-hook 'find-file-hook #'my-tags-load)
+
+(defun ctags-generate ()
+  "Generate TAGS file using ctags in project root or current directory."
+  (interactive)
+  (let* ((default-directory (or (and (project-current)
+                                     (project-root (project-current)))
+                                default-directory))
+         (tags-path (expand-file-name "TAGS" default-directory)))
+    (message "Generating TAGS in %s..." default-directory)
+    (shell-command "ctags -e -R --exclude=.git --exclude=log *")
+    (my-tags-save tags-path)
+    (visit-tags-table tags-path)
+    (message "TAGS generated and saved: %s" tags-path)))
+
+(global-set-key (kbd "M-<f12>") 'xref-find-references)
 
 ;; find and replace with modes
 (defun my-find-replace ()
@@ -564,7 +519,7 @@
 
 ;; theme selection
 (add-to-list 'custom-theme-load-path "~/.emacs.d/themes/")
-(defvar my-current-theme 'bedroom "Currently active theme.")
+(defvar my-current-theme 'jbeans "Currently active theme.")
 
 (defun my-select-theme ()
   "Select and load a theme from all available themes."
@@ -601,6 +556,18 @@
 (global-set-key (kbd "C-<wheel-up>") 'ignore)
 (global-set-key (kbd "C-<wheel-down>") 'ignore)
 
+;; reload emacs config
+(defun reload-emacs-config ()
+  "Reload the Emacs configuration file."
+  (interactive)
+  (load-file "~/.emacs.d/init.el")
+  (message "Emacs config reloaded."))
+
+(defun edit-emacs-config ()
+  "Open the Emacs configuration file for editing."
+  (interactive)
+  (find-file "~/.emacs.d/init.el"))
+
 ;; test function
 (defun my-test ()
   (interactive)
@@ -630,14 +597,22 @@
   (next-line arg))
 
 ;; kill all buffers except current and close other panes
-(defun kill-all-buffers ()
+(defun kill-other-buffers ()
   "Kill all buffers except the current one and close other panes."
   (interactive)
   (let ((current (current-buffer)))
-    (mapc (lambda (buf)
-            (unless (eq buf current)
-              (kill-buffer buf)))
-          (buffer-list)))
+    (dolist (buf (buffer-list))
+      (unless (eq buf current)
+        (let ((proc (get-buffer-process buf)))
+          (when proc
+            (let ((pid (process-id proc)))
+              (when pid
+                (my-kill-process-tree pid)))
+            (set-process-query-on-exit-flag proc t))
+          (with-current-buffer buf
+            (set-buffer-modified-p nil))
+          (kill-buffer buf)))))
+  (setq recentf-list nil)
   (delete-other-windows))
 
 ;; delete word without copying to kill ring
@@ -657,6 +632,7 @@ Does not copy to kill ring."
 
 (global-set-key (kbd "M-<backspace>") 'my-backward-delete-word)
 (global-set-key (kbd "M-d") 'my-delete-word)
+(global-set-key (kbd "M-<delete>") 'my-delete-word)
 (global-set-key (kbd "C-<backspace>") 'my-backward-delete-word)
 
 ;; copy current path with line number
@@ -668,25 +644,6 @@ Does not copy to kill ring."
         (kill-new path-with-line)
         (message "Copied: %s" path-with-line))
     (message "Buffer has no file.")))
-
-;; scratch buffer with recent projects
-(defvar my-dashboard-image "~/.emacs.d/logo.jpg"
-  "Path to dashboard image.")
-
-(defun my-setup-scratch-buffer ()
-  "Setup scratch buffer."
-  (with-current-buffer (get-buffer-create "*scratch*")
-    (let ((inhibit-read-only t))
-      (erase-buffer)
-      (insert "\n")
-      ;; Image
-      (when (and (display-graphic-p)
-                 (file-exists-p (expand-file-name my-dashboard-image)))
-        (insert-image (create-image (expand-file-name my-dashboard-image) nil nil :height 150))
-        (insert "\n\n"))
-      ;; Message
-      (insert "Agartha needs your help! You must write a new operating system from scratch to restore Agartha's defences!\n\nYou will need some food, water, and a funny hat to complete this mission!\n")
-      (goto-char (point-min)))))
 
 ;; select rectangle with shift+mouse
 (defun my-mouse-start-rectangle (start-event)
@@ -780,7 +737,4 @@ Use in `isearch-mode-end-hook'."
 ;; (set-face-attribute 'default nil :font "Consolas-15")
 
 (global-font-lock-mode 1)
-(load-theme 'bedroom t)
-
-;; setup scratch buffer with recent projects on startup
-(add-hook 'emacs-startup-hook 'my-setup-scratch-buffer)
+(load-theme 'jbeans t)

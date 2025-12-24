@@ -12,12 +12,17 @@
  'bedroom
  ;; Basic faces
  '(default ((t (:foreground "#DADEE5" :background "#141B2B"))))
- '(cursor ((t (:background "#FF69B4"))))
+ '(cursor ((t (:background "lightgreen"))))
  '(region ((t (:background "#15285A"))))
  '(hl-line ((t (:background "#000000"))))
  '(highlight ((t (:background "#15285A"))))
- '(mode-line ((t (:background "#d3b58d" :foreground "#141B2B"))))
- '(mode-line-inactive ((t (:inverse-video t))))
+ '(mode-line ((t (:background "#505050" :foreground "#DADEE5"))))
+ '(mode-line-inactive ((t (:background "#2A2A2A" :foreground "#888888"))))
+ '(vertical-border ((t (:foreground "#505050"))))
+ '(tab-line ((t (:background "#505050" :foreground "#DADEE5"))))
+ '(tab-line-tab ((t (:background "#505050" :foreground "#DADEE5"))))
+ '(tab-line-tab-current ((t (:background "#505050" :foreground "#DADEE5"))))
+ '(tab-line-tab-inactive ((t (:background "#383838" :foreground "#888888"))))
 
  ;; Font lock faces
  '(font-lock-builtin-face ((t (:foreground "#DADEE5"))))
