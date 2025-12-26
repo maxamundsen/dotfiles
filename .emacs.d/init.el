@@ -23,12 +23,111 @@
 (require 's)
 (require 'dash)
 (require 'popup)
+(require 'simpc-mode)
+;; Automatically enabling simpc-mode on files with extensions like .h, .c, .cpp, .hpp
+(add-to-list 'auto-mode-alist '("\\.[hc]\\(pp\\)?\\'" . simpc-mode))
 ;; ctags for xref, with dumb-jump as fallback
 (require 'dumb-jump)
 (setq dumb-jump-force-searcher 'grep)
+(setq dumb-jump-selector 'ivy)
 (setq xref-show-definitions-function #'xref-show-definitions-completing-read)
 (setq tags-revert-without-query t)
 (add-hook 'xref-backend-functions #'dumb-jump-xref-activate 100)
+
+;; eglot LSP client
+;; When eglot is active, xref commands (F12, M-f12) automatically use LSP
+;; instead of CTAGS. Eglot registers itself as a higher-priority xref backend.
+(require 'eglot)
+(setq eglot-autoshutdown t)  ; shutdown server when last buffer is closed
+(setq eglot-confirm-server-initiated-edits nil)  ; don't ask for confirmation on renames
+
+;; disable LSP visual indicators but keep diagnostics available
+(add-to-list 'eglot-ignored-server-capabilities :documentHighlightProvider)
+
+;; auto-confirm "modified buffer" prompts when jumping from diagnostics
+(defun my-auto-confirm-modified-buffer (orig-fun prompt)
+  "Auto-confirm prompts about modified buffers having wrong location."
+  (if (string-match-p "has been modified.*wrong location" prompt)
+      t
+    (funcall orig-fun prompt)))
+(advice-add 'y-or-n-p :around #'my-auto-confirm-modified-buffer)
+;; hide squiggly underlines
+(set-face-attribute 'flymake-error nil :underline nil)
+(set-face-attribute 'flymake-warning nil :underline nil)
+(set-face-attribute 'flymake-note nil :underline nil)
+;; hide fringe indicators
+(setq flymake-fringe-indicator-position nil)
+
+;; Go: auto-start eglot (requires gopls: go install golang.org/x/tools/gopls@latest)
+(add-hook 'go-mode-hook 'eglot-ensure)
+
+(global-set-key (kbd "<f2>") 'eglot-rename)
+(global-set-key (kbd "C-S-m") 'my-flymake-show-project-errors-warnings)
+(global-set-key (kbd "<S-f2>") 'eglot-reconnect)
+(global-set-key (kbd "C-t") 'my-lsp-find-workspace-symbol)
+
+(defun my-flymake-show-project-errors-warnings ()
+  "Show project diagnostics, filtering out notes (only errors and warnings)."
+  (interactive)
+  ;; Kill existing diagnostics buffer to force refresh
+  (when-let ((buf (get-buffer "*Flymake diagnostics*")))
+    (kill-buffer buf))
+  ;; Refresh flymake on all project buffers
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when (and (bound-and-true-p flymake-mode)
+                 (buffer-file-name))
+        (flymake-start))))
+  (flymake-show-project-diagnostics)
+  (run-at-time 0.1 nil
+               (lambda ()
+                 (when-let ((buf (get-buffer "*Flymake diagnostics*")))
+                   (with-current-buffer buf
+                     (let ((inhibit-read-only t))
+                       (goto-char (point-min))
+                       (while (not (eobp))
+                         (if (looking-at ".*\\bnote\\b.*$")
+                             (delete-region (line-beginning-position) (1+ (line-end-position)))
+                           (forward-line 1)))))))))
+
+(defun my-lsp-find-workspace-symbol ()
+  "Interactively search for symbols in workspace using LSP."
+  (interactive)
+  (if (eglot-managed-p)
+      (let ((server (eglot-current-server))
+            (root (project-root (project-current))))
+        (ivy-read "Symbol: "
+                  (lambda (input)
+                    (when (and input (>= (length input) 1))
+                      (condition-case nil
+                          (let* ((resp (jsonrpc-request server :workspace/symbol
+                                                        `(:query ,input)))
+                                 (items (append resp nil)))
+                            (delq nil
+                                  (mapcar (lambda (item)
+                                            (condition-case nil
+                                                (let* ((name (plist-get item :name))
+                                                       (loc (plist-get item :location))
+                                                       (uri (plist-get loc :uri))
+                                                       (range (plist-get loc :range))
+                                                       (start (plist-get range :start))
+                                                       (line (1+ (plist-get start :line)))
+                                                       (file (eglot-uri-to-path uri))
+                                                       (rel-path (file-relative-name file root)))
+                                                  (propertize (format "%s  %s:%d" name rel-path line)
+                                                              'file file
+                                                              'line line))
+                                              (error nil)))
+                                          items)))
+                        (error nil))))
+                  :dynamic-collection t
+                  :require-match t
+                  :action (lambda (candidate)
+                            (when (and candidate (get-text-property 0 'file candidate))
+                              (find-file (get-text-property 0 'file candidate))
+                              (goto-char (point-min))
+                              (forward-line (1- (get-text-property 0 'line candidate)))))))
+    (call-interactively 'xref-find-apropos)))
 
 ;; vundo for visual undo tree
 (require 'vundo)
@@ -61,6 +160,11 @@
                            (setq-local tab-width 4)
                            (setq-local stupid-indent-level 4)))
 
+(add-hook 'simpc-mode-hook (lambda ()
+                           (setq-local indent-tabs-mode t)
+                           (setq-local tab-width 4)
+                           (setq-local stupid-indent-level 4)))
+
 (add-hook 'python-mode-hook (lambda ()
                               (setq-local indent-tabs-mode nil)
                               (setq-local tab-width 4)
@@ -81,9 +185,10 @@
 
 ;; bottom panel settings (compilation, xref, etc.)
 (setq compilation-scroll-output -1)
+(setq compilation-save-buffers-predicate 'ignore)
 
 ;; bottom panel buffer patterns
-(defvar my-bottom-panel-buffers '("\\*compilation\\*" "\\*xref\\*")
+(defvar my-bottom-panel-buffers '("\\*compilation\\*" "\\*xref\\*" "\\*Flymake diagnostics.*\\*")
   "List of buffer name patterns for bottom panel.")
 
 (defun my-bottom-panel-buffer-p (buf)
@@ -118,6 +223,8 @@
              '("\\*compilation\\*" (my-display-in-bottom-panel) (window-height . 0.25)))
 (add-to-list 'display-buffer-alist
              '("\\*xref\\*" (my-display-in-bottom-panel) (window-height . 0.25)))
+(add-to-list 'display-buffer-alist
+             '("\\*Flymake diagnostics.*\\*" (my-display-in-bottom-panel) (window-height . 0.25)))
 
 
 (defun my-bottom-panel-toggle ()
@@ -256,8 +363,16 @@
 (global-set-key (kbd "C-p") 'project-find-file)
 (global-set-key (kbd "C-s") 'save-buffer)
 (global-set-key (kbd "<f3>") 'my-select-theme)
-(global-set-key (kbd "<f12>") 'xref-find-definitions)
-(global-set-key (kbd "<C-S-f12>") 'xref-pop-marker-stack)
+(global-set-key (kbd "C-<mouse-1>") 'my-xref-find-definitions-at-click)
+(global-set-key (kbd "C-S-<mouse-1>") 'my-xref-find-references-at-click)
+(global-set-key (kbd "<f12>") 'my-xref-find-definitions-same-pane)
+(global-set-key (kbd "C-<f12>") 'xref-find-references)
+(global-set-key (kbd "C-{") 'xref-go-back)
+(global-set-key (kbd "C-}") 'xref-go-forward)
+(global-set-key (kbd "C-]") 'stupid-indent)
+(global-set-key (kbd "C-[") 'stupid-outdent)
+(global-set-key (kbd "<mouse-3>") 'xref-go-back)
+(global-set-key (kbd "<mouse-4>") 'xref-go-forward)
 (global-set-key (kbd "C-q") 'save-buffers-kill-terminal)
 (global-set-key (kbd "C-l") 'my-select-line)
 (global-set-key (kbd "C-e") 'my-copy-path-with-line)
@@ -265,7 +380,8 @@
 (define-key isearch-mode-map (kbd "<return>") 'isearch-repeat-forward)
 (define-key isearch-mode-map (kbd "S-<return>") 'isearch-repeat-backward)
 (define-key isearch-mode-map (kbd "<backspace>") 'isearch-del-char)
-(define-key isearch-mode-map (kbd "<escape>") 'isearch-exit)
+(define-key isearch-mode-map (kbd "C-v") 'isearch-yank-kill)
+(define-key isearch-mode-map (kbd "<escape>") 'my-isearch-cancel-or-exit)
 (define-key isearch-mode-map (kbd "C-g") 'my-isearch-cancel-or-exit)
 
 (defun my-isearch-cancel-or-exit ()
@@ -274,11 +390,69 @@
   (if (string= isearch-string "")
       (isearch-cancel)
     (isearch-exit)))
+
+(defun my-move-line-up ()
+  "Move current line or region up one line."
+  (interactive)
+  (if (use-region-p)
+      (my-move-region-up)
+    (let ((col (current-column)))
+      (transpose-lines 1)
+      (forward-line -2)
+      (move-to-column col))))
+
+(defun my-move-line-down ()
+  "Move current line or region down one line."
+  (interactive)
+  (if (use-region-p)
+      (my-move-region-down)
+    (let ((col (current-column)))
+      (forward-line 1)
+      (transpose-lines 1)
+      (forward-line -1)
+      (move-to-column col))))
+
+(defun my-move-region-up ()
+  "Move selected region up one line, keeping selection."
+  (let* ((rbeg (region-beginning))
+         (rend (region-end))
+         (beg (save-excursion (goto-char rbeg) (line-beginning-position)))
+         (end (save-excursion (goto-char rend) (if (bolp) (point) (1+ (line-end-position)))))
+         (offset-from-beg (- rbeg beg))
+         (region-len (- rend rbeg))
+         (text (delete-and-extract-region beg end)))
+    (forward-line -1)
+    (let ((new-beg (point)))
+      (insert text)
+      (set-mark (+ new-beg offset-from-beg))
+      (goto-char (+ new-beg offset-from-beg region-len))
+      (setq deactivate-mark nil))))
+
+(defun my-move-region-down ()
+  "Move selected region down one line, keeping selection."
+  (let* ((rbeg (region-beginning))
+         (rend (region-end))
+         (beg (save-excursion (goto-char rbeg) (line-beginning-position)))
+         (end (save-excursion (goto-char rend) (if (bolp) (point) (1+ (line-end-position)))))
+         (offset-from-beg (- rbeg beg))
+         (region-len (- rend rbeg))
+         (lines (count-lines beg end))
+         (text (delete-and-extract-region beg end)))
+    (forward-line 1)
+    (let ((new-beg (point)))
+      (insert text)
+      (set-mark (+ new-beg offset-from-beg))
+      (goto-char (+ new-beg offset-from-beg region-len))
+      (setq deactivate-mark nil))))
+
+(global-set-key (kbd "M-<up>") 'my-move-line-up)
+(global-set-key (kbd "M-<down>") 'my-move-line-down)
 (setq isearch-wrap-pause 'no)
 
 ;; multiple cursors (vscode-style)
 (setq mc/always-run-for-all t)
-(global-set-key (kbd "C-S-<mouse-1>") 'mc/add-cursor-on-click)
+(global-set-key (kbd "M-<down-mouse-1>") 'ignore)
+(global-set-key (kbd "M-<mouse-1>") 'mc/add-cursor-on-click)
 (global-set-key (kbd "C-M-<up>") (lambda () (interactive) (mc/mark-previous-lines 1)))
 (global-set-key (kbd "C-M-<down>") (lambda () (interactive) (mc/mark-next-lines 1)))
 (define-key mc/keymap (kbd "<escape>") 'mc/keyboard-quit)
@@ -311,6 +485,32 @@
         (select-window (car top-windows))
         (split-window-right)
         (other-window 1)))))
+
+(defun my-xref-find-definitions-same-pane ()
+  "Find definition and show it in the same pane.
+Falls back to dumb-jump if xref fails."
+  (interactive)
+  (let ((identifier (thing-at-point 'symbol t)))
+    (if (null identifier)
+        (message "No symbol at point")
+      (condition-case nil
+          (let ((xrefs (xref-backend-definitions (xref-find-backend) identifier)))
+            (if xrefs
+                (xref-find-definitions identifier)
+              (dumb-jump-go)))
+        (error (dumb-jump-go))))))
+
+(defun my-xref-find-definitions-at-click (event)
+  "Find definition of the symbol clicked on."
+  (interactive "e")
+  (mouse-set-point event)
+  (my-xref-find-definitions-same-pane))
+
+(defun my-xref-find-references-at-click (event)
+  "Find references of the symbol clicked on."
+  (interactive "e")
+  (mouse-set-point event)
+  (xref-find-references (thing-at-point 'symbol t)))
 
 ;; custom bind minor mode
 ;; this allows binding keys that override all other modes
@@ -470,8 +670,6 @@
     (my-tags-save tags-path)
     (visit-tags-table tags-path)
     (message "TAGS generated and saved: %s" tags-path)))
-
-(global-set-key (kbd "M-<f12>") 'xref-find-references)
 
 ;; find and replace with modes
 (defun my-find-replace ()

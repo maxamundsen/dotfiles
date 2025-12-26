@@ -84,12 +84,56 @@ copy_file() {
     fi
 }
 
+sync_emacs_dir() {
+    local src_base="$1"
+    local dest_base="$2"
+    local action="$3"
+
+    # Files to sync
+    local files=("custom.el" "init.el")
+    # Directories to sync (cleared first)
+    local dirs=("lisp" "themes")
+
+    # Sync individual files
+    for file in "${files[@]}"; do
+        local src="$src_base/$file"
+        local dest="$dest_base/$file"
+        if [[ -f "$src" ]]; then
+            ensure_dir "$dest_base"
+            cp "$src" "$dest"
+        fi
+    done
+
+    # Sync directories (clear destination first)
+    for dir in "${dirs[@]}"; do
+        local src_dir="$src_base/$dir"
+        local dest_dir="$dest_base/$dir"
+        if [[ -d "$src_dir" ]]; then
+            # Clear destination directory
+            if [[ -d "$dest_dir" ]]; then
+                rm -rf "$dest_dir"
+            fi
+            # Copy directory
+            cp -r "$src_dir" "$dest_dir"
+        fi
+    done
+}
+
 push_dotfiles() {
     echo "Pushing dotfiles from repo to home directory..."
+
+    # Handle .emacs.d specially (clear folders before syncing)
+    if [[ -d "$DOTFILES_DIR/.emacs.d" ]]; then
+        sync_emacs_dir "$DOTFILES_DIR/.emacs.d" "$HOME_DIR/.emacs.d" "Push"
+    fi
 
     local count=0
     while IFS= read -r src_file; do
         rel_path="${src_file#$DOTFILES_DIR/}"
+        # Skip .emacs.d files (handled above)
+        if [[ "$rel_path" == .emacs.d/* ]]; then
+            continue
+        fi
         dest_file="$(get_system_path "$rel_path")"
         copy_file "$src_file" "$dest_file" "Push"
         ((count++))
@@ -101,9 +145,18 @@ push_dotfiles() {
 pull_dotfiles() {
     echo "Pulling dotfiles from home directory to repo..."
 
+    # Handle .emacs.d specially (clear folders before syncing)
+    if [[ -d "$HOME_DIR/.emacs.d" ]]; then
+        sync_emacs_dir "$HOME_DIR/.emacs.d" "$DOTFILES_DIR/.emacs.d" "Pull"
+    fi
+
     local count=0
     while IFS= read -r dest_file; do
         rel_path="${dest_file#$DOTFILES_DIR/}"
+        # Skip .emacs.d files (handled above)
+        if [[ "$rel_path" == .emacs.d/* ]]; then
+            continue
+        fi
         src_file="$(get_system_path "$rel_path")"
         copy_file "$src_file" "$dest_file" "Pull"
         ((count++))
