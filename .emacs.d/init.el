@@ -27,6 +27,7 @@
 (require 'dumb-jump)
 (setq dumb-jump-force-searcher 'grep)
 (setq xref-show-definitions-function #'xref-show-definitions-completing-read)
+(setq tags-revert-without-query t)
 (add-hook 'xref-backend-functions #'dumb-jump-xref-activate 100)
 
 ;; vundo for visual undo tree
