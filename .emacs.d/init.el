@@ -15,8 +15,8 @@
 (require 'popup)
 
 ;; Completion framework
-(require 'ivy)
-(require 'counsel)
+(require 'vertico)
+(require 'orderless)
 
 ;; Language modes
 (require 'yaml-mode)
@@ -52,31 +52,34 @@
 (add-to-list 'auto-mode-alist '("\\.[hc]\\(pp\\)?\\'" . simpc-mode))
 
 ;;; ============================================================================
-;;; IVY & COMPLETION FRAMEWORK
+;;; VERTICO & COMPLETION FRAMEWORK
 ;;; ============================================================================
 
-(ivy-mode 1)
-(setq ivy-use-virtual-buffers t)
-(setq ivy-count-format "(%d/%d) ")
-(setq ivy-wrap t)
+(vertico-mode 1)
+(setq vertico-cycle t)
+(setq vertico-count 15)
+
+;; orderless completion style
+(setq completion-styles '(orderless basic))
+(setq completion-category-overrides '((file (styles basic partial-completion))))
+(setq orderless-matching-styles '(orderless-literal orderless-regexp))
 
 ;;; ============================================================================
-;;; XREF, CTAGS & NAVIGATION
+;;; XREF & NAVIGATION
 ;;; ============================================================================
 
-;; dumb-jump as fallback for xref
+;; dumb-jump as fallback for xref when LSP is not available
 (setq dumb-jump-force-searcher 'grep)
-(setq dumb-jump-selector 'ivy)
+(setq dumb-jump-selector 'completing-read)
 (setq xref-show-definitions-function #'xref-show-definitions-completing-read)
-(setq tags-revert-without-query t)
 (add-hook 'xref-backend-functions #'dumb-jump-xref-activate 100)
 
 ;;; ============================================================================
 ;;; EGLOT (LSP) CONFIGURATION
 ;;; ============================================================================
 
-;; When eglot is active, xref commands (F12, M-f12) automatically use LSP
-;; instead of CTAGS. Eglot registers itself as a higher-priority xref backend.
+;; When eglot is active, xref commands (F12, M-f12) automatically use LSP.
+;; Eglot registers itself as a higher-priority xref backend, with dumb-jump as fallback.
 
 (setq eglot-autoshutdown t)  ; shutdown server when last buffer is closed
 (setq eglot-confirm-server-initiated-edits nil)  ; don't ask for confirmation on renames
@@ -99,39 +102,33 @@
   "Interactively search for symbols in workspace using LSP."
   (interactive)
   (if (eglot-managed-p)
-      (let ((server (eglot-current-server))
-            (root (project-root (project-current))))
-        (ivy-read "Symbol: "
-                  (lambda (input)
-                    (when (and input (>= (length input) 1))
-                      (condition-case nil
-                          (let* ((resp (jsonrpc-request server :workspace/symbol
-                                                        `(:query ,input)))
-                                 (items (append resp nil)))
-                            (delq nil
-                                  (mapcar (lambda (item)
-                                            (condition-case nil
-                                                (let* ((name (plist-get item :name))
-                                                       (loc (plist-get item :location))
-                                                       (uri (plist-get loc :uri))
-                                                       (range (plist-get loc :range))
-                                                       (start (plist-get range :start))
-                                                       (line (1+ (plist-get start :line)))
-                                                       (file (eglot-uri-to-path uri))
-                                                       (rel-path (file-relative-name file root)))
-                                                  (propertize (format "%s  %s:%d" name rel-path line)
-                                                              'file file
-                                                              'line line))
-                                              (error nil)))
-                                          items)))
-                        (error nil))))
-                  :dynamic-collection t
-                  :require-match t
-                  :action (lambda (candidate)
-                            (when (and candidate (get-text-property 0 'file candidate))
-                              (find-file (get-text-property 0 'file candidate))
-                              (goto-char (point-min))
-                              (forward-line (1- (get-text-property 0 'line candidate)))))))
+      (let* ((server (eglot-current-server))
+             (root (project-root (project-current)))
+             (query (read-string "Symbol query: "))
+             (resp (jsonrpc-request server :workspace/symbol `(:query ,query)))
+             (items (append resp nil))
+             (candidates
+              (delq nil
+                    (mapcar (lambda (item)
+                              (condition-case nil
+                                  (let* ((name (plist-get item :name))
+                                         (loc (plist-get item :location))
+                                         (uri (plist-get loc :uri))
+                                         (range (plist-get loc :range))
+                                         (start (plist-get range :start))
+                                         (line (1+ (plist-get start :line)))
+                                         (file (eglot-uri-to-path uri))
+                                         (rel-path (file-relative-name file root)))
+                                    (propertize (format "%s  %s:%d" name rel-path line)
+                                                'file file
+                                                'line line))
+                                (error nil)))
+                            items)))
+             (candidate (completing-read "Symbol: " candidates nil t)))
+        (when (and candidate (get-text-property 0 'file candidate))
+          (find-file (get-text-property 0 'file candidate))
+          (goto-char (point-min))
+          (forward-line (1- (get-text-property 0 'line candidate)))))
     (call-interactively 'xref-find-apropos)))
 
 ;;; ============================================================================
@@ -297,7 +294,7 @@
 (setq compilation-scroll-output -1)
 (setq compilation-save-buffers-predicate 'ignore)
 
-(defvar my-bottom-panel-buffers '("\\*compilation\\*" "\\*xref\\*" "\\*Flymake diagnostics.*\\*")
+(defvar my-bottom-panel-buffers '("\\*compilation\\*" "\\*xref\\*" "\\*Flymake diagnostics.*\\*" "\\*grep\\*")
   "List of buffer name patterns for bottom panel.")
 
 (defun my-bottom-panel-buffer-p (buf)
@@ -331,6 +328,8 @@
              '("\\*xref\\*" (my-display-in-bottom-panel) (window-height . 0.25)))
 (add-to-list 'display-buffer-alist
              '("\\*Flymake diagnostics.*\\*" (my-display-in-bottom-panel) (window-height . 0.25)))
+(add-to-list 'display-buffer-alist
+             '("\\*grep\\*" (my-display-in-bottom-panel) (window-height . 0.25)))
 
 (defun my-bottom-panel-toggle ()
   "Toggle the bottom panel. Close if visible, open if hidden."
@@ -487,7 +486,7 @@
 
 ;; --- Project Management ---
 (global-set-key (kbd "<f7>") 'project-switch-project)
-(global-set-key (kbd "C-S-p") 'counsel-M-x)
+(global-set-key (kbd "C-S-p") 'execute-extended-command)
 
 ;; --- Bookmarks ---
 (global-set-key (kbd "<f9>") 'bookmark-jump)
@@ -883,46 +882,6 @@ Does not copy to kill ring."
         (compile cmd)
       (my-compile-custom))))
 
-;;; ============================================================================
-;;; CUSTOM FUNCTIONS - CTAGS
-;;; ============================================================================
-
-(defun my-tags-get-saved ()
-  "Get saved TAGS file path for current project."
-  (when (project-current)
-    (let ((file (my-project-data-file "tags-file")))
-      (when (file-exists-p file)
-        (with-temp-buffer
-          (insert-file-contents file)
-          (string-trim (buffer-string)))))))
-
-(defun my-tags-save (tags-path)
-  "Save TAGS file path for current project."
-  (when (project-current)
-    (let ((file (my-project-data-file "tags-file")))
-      (with-temp-file file
-        (insert tags-path)))))
-
-(defun my-tags-load ()
-  "Load saved TAGS file for current project."
-  (let ((saved (my-tags-get-saved)))
-    (when (and saved (file-exists-p saved))
-      (visit-tags-table saved t))))
-
-(add-hook 'find-file-hook #'my-tags-load)
-
-(defun ctags-generate ()
-  "Generate TAGS file using ctags in project root or current directory."
-  (interactive)
-  (let* ((default-directory (or (and (project-current)
-                                     (project-root (project-current)))
-                                default-directory))
-         (tags-path (expand-file-name "TAGS" default-directory)))
-    (message "Generating TAGS in %s..." default-directory)
-    (shell-command "ctags -e -R --exclude=.git --exclude=log *")
-    (my-tags-save tags-path)
-    (visit-tags-table tags-path)
-    (message "TAGS generated and saved: %s" tags-path)))
 
 ;;; ============================================================================
 ;;; CUSTOM FUNCTIONS - File Operations

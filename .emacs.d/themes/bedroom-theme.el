@@ -39,6 +39,10 @@
  '(font-lock-type-face ((t (:foreground "#85B8DE"))))
  '(font-lock-warning-face ((t (:foreground "#FC2D07"))))
 
+ ;; Dired
+ '(dired-directory ((t (:foreground "#5FAFD7" :weight bold))))
+ '(dired-symlink ((t (:foreground "#87919D"))))
+
  ;; Custom/widget faces
  '(custom-group-tag ((t (:underline t :foreground "lightblue"))))
  '(custom-variable-tag ((t (:underline t :foreground "lightblue"))))

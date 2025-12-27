@@ -87,14 +87,12 @@
  '(flyspell-incorrect ((t (:underline (:style wave :color "#772222")))))
  '(flyspell-duplicate ((t (:underline (:style wave :color "#986032")))))
 
- ;; Ivy
- '(ivy-current-match ((t (:background "#1C4449" :foreground "#BFC9DB"))))
- '(ivy-minibuffer-match-face-1 ((t (:foreground "#599999"))))
- '(ivy-minibuffer-match-face-2 ((t (:foreground "#26B2B2" :weight bold))))
- '(ivy-minibuffer-match-face-3 ((t (:foreground "#E0AD82" :weight bold))))
- '(ivy-minibuffer-match-face-4 ((t (:foreground "#D699B5" :weight bold))))
- '(ivy-confirm-face ((t (:foreground "#227722"))))
- '(ivy-match-required-face ((t (:foreground "#772222"))))
+ ;; Vertico
+ '(vertico-current ((t (:background "#1C4449" :foreground "#BFC9DB"))))
+ '(vertico-group-title ((t (:foreground "#599999"))))
+ '(vertico-group-separator ((t (:foreground "#3A4255"))))
+ '(completions-common-part ((t (:foreground "#26B2B2"))))
+ '(completions-first-difference ((t (:foreground "#E0AD82" :weight bold))))
 
  ;; Dired
  '(dired-directory ((t (:foreground "#82AAA3"))))
