@@ -24,6 +24,7 @@
 (require 'go-mode)
 (require 'jai-mode)
 (require 'simpc-mode)
+(require 'web-mode)
 
 ;; Editing enhancements
 (require 'stupid-indent-mode)
@@ -44,6 +45,10 @@
 (add-to-list 'auto-mode-alist '("\\.yml\\'" . yaml-mode))
 (add-to-list 'auto-mode-alist '("\\.go\\'" . go-mode))
 (add-to-list 'auto-mode-alist '("\\.jai\\'" . jai-mode))
+(add-to-list 'auto-mode-alist '("\\.css\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.js\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.html\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.\\(as\\(px?\\|cx\\)\\|razor\\|blazor\\|cshtml\\)\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.[hc]\\(pp\\)?\\'" . simpc-mode))
 
 ;;; ============================================================================
@@ -170,8 +175,13 @@
 ;;; ============================================================================
 
 (setq mc/always-run-for-all t)
+(setq mc/cycle-looping-behaviour 'continue)
 (define-key mc/keymap (kbd "<escape>") 'mc/keyboard-quit)
 (define-key mc/keymap (kbd "<return>") nil)
+
+(advice-add 'mc/load-lists :after
+            (lambda () (add-to-list 'mc/cmds-to-run-once 'my-mc-mark-next-like-this)))
+
 
 ;;; ============================================================================
 ;;; INDENTATION SETTINGS
@@ -500,7 +510,7 @@
 (global-set-key (kbd "C-j") 'dabbrev-expand)
 
 ;; --- Multiple Cursors ---
-(global-set-key (kbd "C-d") 'mc/mark-next-like-this-word)
+(global-set-key (kbd "C-d") 'my-mc-mark-next-like-this)
 (global-set-key (kbd "C-S-d") 'mc/mark-previous-like-this-word)
 (global-set-key (kbd "C-S-a") 'mc/mark-all-like-this)
 (global-set-key (kbd "M-<down-mouse-1>") 'ignore)
@@ -516,6 +526,9 @@
 
 ;; --- Misc ---
 (global-set-key (kbd "C-e") 'my-copy-path-with-line)
+(global-set-key (kbd "C-!") 'my-insert-shell-command-output)
+(global-set-key (kbd "C-<f4>") 'my-toggle-macro-recording)
+(global-set-key (kbd "<f4>") 'my-call-macro)
 
 ;; --- Minibuffer Keybindings ---
 (define-key minibuffer-local-filename-completion-map (kbd "C-2") 'my-find-file-right-pane)
@@ -542,7 +555,7 @@
   (define-key map (kbd "C-3") 'switch-to-buffer)
   (define-key map (kbd "C-4") 'find-file)
   (define-key map (kbd "C-j") 'dabbrev-expand)
-  (define-key map (kbd "C-d") 'mc/mark-next-like-this-word)
+  (define-key map (kbd "C-d") 'my-mc-mark-next-like-this)
   (define-key map (kbd "C-S-d") 'mc/mark-previous-like-this-word)
   (define-key map (kbd "C-S-a") 'mc/mark-all-like-this)
     map)
@@ -1087,6 +1100,56 @@ Does not copy to kill ring."
   (interactive)
   (message "Hello world!"))
 
+(defun lipsum ()
+  "Insert lorem ipsum placeholder text."
+  (interactive)
+  (insert "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."))
+
+(defun my-mc-mark-next-like-this ()
+  "VSCode-style C-d: first press selects word, subsequent presses add cursors."
+  (interactive)
+  (if (use-region-p)
+      (progn
+        (mc/mark-next-like-this 1)
+        (mc/maybe-multiple-cursors-mode))
+    (let ((bounds (bounds-of-thing-at-point 'symbol)))
+      (when bounds
+        (goto-char (car bounds))
+        (set-mark (cdr bounds))
+        (activate-mark)))))
+
+(defun my-insert-shell-command-output ()
+  "Prompt for a shell command and insert its output at point."
+  (interactive)
+  (let ((command (read-string "Shell command: ")))
+    (insert (string-trim-right (shell-command-to-string command)))))
+
+(defun my-toggle-macro-recording ()
+  "Toggle keyboard macro recording. Start if not recording, stop if recording."
+  (interactive)
+  (if defining-kbd-macro
+      (progn
+        (kmacro-end-macro nil)
+        (message "Macro recorded. Press F4 to replay."))
+    (kmacro-start-macro nil)
+    (message "Recording macro... Press C-<f4> to stop.")))
+
+(defun my-call-macro ()
+  "Call last macro. If region is active, run macro N times where N is number of selected lines.
+All changes from a multi-line macro execution are undoable as a single operation."
+  (interactive)
+  (if (use-region-p)
+      (let ((lines (count-lines (region-beginning) (region-end)))
+            (change-group (prepare-change-group)))
+        (goto-char (region-beginning))
+        (deactivate-mark)
+        (unwind-protect
+            (progn
+              (activate-change-group change-group)
+              (kmacro-call-macro lines))
+          (undo-amalgamate-change-group change-group)))
+    (kmacro-call-macro 1)))
+
 ;;; ============================================================================
 ;;; TWEAKS & FIXES
 ;;; ============================================================================
@@ -1118,6 +1181,7 @@ Use in `isearch-mode-end-hook'."
 ;;; ============================================================================
 
 ;; (set-face-attribute 'default nil :font "Consolas-15")
+
 (load-theme 'bedroom t)
 
 ;;; init.el ends here
