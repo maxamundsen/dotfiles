@@ -77,15 +77,6 @@
  '(compilation-mode-line-exit ((t (:foreground "#51b04f"))))
  '(compilation-mode-line-fail ((t (:foreground "#ff6f6f"))))
 
- ;; Flymake
- '(flymake-error ((t (:underline (:style wave :color "#ff6f6f")))))
- '(flymake-warning ((t (:underline (:style wave :color "#d09950")))))
- '(flymake-note ((t (:underline (:style wave :color "#8f8886")))))
-
- ;; Flyspell
- '(flyspell-incorrect ((t (:underline (:style wave :color "#ff6f6f")))))
- '(flyspell-duplicate ((t (:underline (:style wave :color "#d09950")))))
-
  ;; Vertico
  '(vertico-current ((t (:background "#503240" :foreground "#efd5c5"))))
  '(vertico-group-title ((t (:foreground "#8fcfd0"))))
@@ -116,9 +107,6 @@
  '(ediff-fine-diff-A ((t (:background "#782a4a"))))
  '(ediff-fine-diff-B ((t (:background "#2f6767"))))
  '(ediff-fine-diff-C ((t (:background "#64651f"))))
-
- ;; Eglot
- '(eglot-highlight-symbol-face ((t (:background "#412f4f"))))
 
  ;; Link
  '(link ((t (:foreground "#57b0ff" :underline t))))

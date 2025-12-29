@@ -135,13 +135,17 @@
 ;;; FLYMAKE & DIAGNOSTICS
 ;;; ============================================================================
 
-;; hide squiggly underlines
-(set-face-attribute 'flymake-error nil :underline nil)
-(set-face-attribute 'flymake-warning nil :underline nil)
-(set-face-attribute 'flymake-note nil :underline nil)
-
 ;; hide fringe indicators
 (setq flymake-fringe-indicator-position nil)
+
+;; hide squiggly underlines (must be set after flymake loads)
+(with-eval-after-load 'flymake
+  (set-face-attribute 'flymake-error nil :underline nil)
+  (set-face-attribute 'flymake-warning nil :underline nil)
+  (set-face-attribute 'flymake-note nil :underline nil))
+
+;; disable eglot inlay hints
+(add-to-list 'eglot-ignored-server-capabilities :inlayHintProvider)
 
 (defun my-flymake-show-project-errors-warnings ()
   "Show project diagnostics, filtering out notes (only errors and warnings)."
@@ -248,9 +252,6 @@
 ;; editing behavior
 (show-paren-mode 1)
 (delete-selection-mode 1)
-(cua-mode t)
-(setq cua-auto-tabify-rectangles nil)
-(setq cua-keep-region-after-copy nil)
 (transient-mark-mode 1)
 (electric-pair-mode -1)
 (electric-indent-mode 0)
@@ -404,12 +405,20 @@
 (setq mac-command-modifier 'control)
 (setq mac-control-modifier 'command)
 
+;; Remap C-c and C-x prefixes to C-k so we can use them for copy/cut
+(global-unset-key (kbd "C-k"))  ; unbind kill-line so C-k can be a prefix
+(define-prefix-command 'my-ck-prefix)
+(global-set-key (kbd "C-k") 'my-ck-prefix)
+(define-key my-ck-prefix (kbd "C-c") mode-specific-map)
+(define-key my-ck-prefix (kbd "C-x") ctl-x-map)
+
 ;; isearch settings
 (setq isearch-wrap-pause 'no)
 
 ;; --- File & Buffer Operations ---
 (global-set-key (kbd "C-s") 'save-buffer)
 (global-set-key (kbd "C-n") (lambda () (interactive) (switch-to-buffer (generate-new-buffer "untitled"))))
+(global-set-key (kbd "C-o") 'find-file)
 (global-set-key (kbd "C-p") 'project-find-file)
 (global-set-key (kbd "C-3") 'switch-to-buffer)
 (global-set-key (kbd "C-4") 'find-file)
@@ -420,7 +429,8 @@
 (global-set-key (kbd "C-w") 'delete-window)
 (global-set-key (kbd "C-\\") 'split-window-below)
 (global-set-key (kbd "C-|") 'split-window-right)
-(global-set-key (kbd "C-o") 'next-multiframe-window)
+(global-set-key (kbd "C-<prior>") 'previous-multiframe-window)
+(global-set-key (kbd "C-<next>") 'next-multiframe-window)
 (global-set-key (kbd "C-1") 'my-select-left-pane)
 (global-set-key (kbd "C-2") 'my-select-right-pane)
 (global-set-key (kbd "<f11>") 'toggle-frame-maximized)
@@ -430,14 +440,14 @@
 (global-set-key (kbd "C-l") 'my-select-line)
 (global-set-key (kbd "C-/") 'my-toggle-comment)
 (global-set-key (kbd "M-j") 'my-duplicate-line)
-(global-unset-key (kbd "C-x C-SPC"))
-(global-set-key (kbd "C-x C-SPC") 'rectangle-mark-mode)
+(global-set-key (kbd "C-k C-x C-SPC") 'rectangle-mark-mode)
 (global-set-key (kbd "S-<down-mouse-1>") #'my-mouse-start-rectangle)
 
-;; --- Clipboard & Kill Ring ---
-(global-set-key [?\C-z] 'undo)
-(global-set-key (kbd "C-y") 'clipboard-yank)
-(global-set-key (kbd "M-w") 'clipboard-kill-ring-save)
+;; --- Clipboard & Kill Ring (CUA-style) ---
+(global-set-key (kbd "C-z") 'undo)
+(global-set-key (kbd "C-v") 'clipboard-yank)
+(global-set-key (kbd "C-c") 'my-copy)
+(global-set-key (kbd "C-x") 'my-cut)
 
 ;; --- Navigation ---
 (global-set-key (kbd "<home>") 'my-smart-home)
@@ -458,6 +468,7 @@
 (global-set-key (kbd "C-*") 'search-current-word)
 (global-set-key (kbd "C-S-f") 'my-project-find-text)
 (global-set-key (kbd "C-S-h") 'my-find-replace)
+(global-set-key (kbd "C-r") 'my-configure-search-settings)
 
 ;; --- Code Navigation (xref/LSP) ---
 (global-set-key (kbd "<f12>") 'my-xref-find-definitions-same-pane)
@@ -499,9 +510,6 @@
 (global-set-key (kbd "C-=") 'my-global-zoom-in)
 (global-set-key (kbd "C--") 'my-global-zoom-out)
 (global-set-key (kbd "C-0") 'my-global-zoom-reset)
-(global-unset-key (kbd "C-x C-="))
-(global-unset-key (kbd "C-x C--"))
-(global-unset-key (kbd "C-x C-0"))
 (global-set-key (kbd "C-<wheel-up>") 'ignore)
 (global-set-key (kbd "C-<wheel-down>") 'ignore)
 
@@ -548,7 +556,9 @@
   (let ((map (make-sparse-keymap)))
   (define-key map (kbd "M-p") 'backward-paragraph)
   (define-key map (kbd "M-n") 'forward-paragraph)
-  (define-key map (kbd "C-o") 'next-multiframe-window)
+  (define-key map (kbd "C-o") 'find-file)
+  (define-key map (kbd "C-<prior>") 'previous-multiframe-window)
+  (define-key map (kbd "C-<next>") 'next-multiframe-window)
   (define-key map (kbd "C-1") 'my-select-left-pane)
   (define-key map (kbd "C-2") 'my-select-right-pane)
   (define-key map (kbd "C-3") 'switch-to-buffer)
@@ -557,6 +567,9 @@
   (define-key map (kbd "C-d") 'my-mc-mark-next-like-this)
   (define-key map (kbd "C-S-d") 'mc/mark-previous-like-this-word)
   (define-key map (kbd "C-S-a") 'mc/mark-all-like-this)
+  (define-key map (kbd "C-c") 'my-copy)
+  (define-key map (kbd "C-x") 'my-cut)
+  (define-key map (kbd "C-v") 'clipboard-yank)
     map)
   "my-keys-minor-mode keymap.")
 
@@ -641,17 +654,92 @@ Falls back to dumb-jump if xref fails."
 ;;; CUSTOM FUNCTIONS - Search & Replace
 ;;; ============================================================================
 
-(defun my-isearch-forward ()
-  "Start isearch, using selected text if region is active."
+(defvar my-search-use-regexp nil
+  "When non-nil, search functions use regexp mode instead of literal text.")
+
+(defvar my-search-whole-word nil
+  "When non-nil, search functions match whole words only.")
+
+(defvar my-search-case-sensitive nil
+  "When non-nil, search functions are case-sensitive. When nil, uses smart case.")
+
+(defun my-search-settings-status ()
+  "Return a string showing current search settings."
+  (format "Search :: Regexp: %s | Whole-word: %s | Case-sensitive: %s"
+          (if my-search-use-regexp "on" "off")
+          (if my-search-whole-word "on" "off")
+          (if my-search-case-sensitive "on" "off")))
+
+(defun my-configure-search-settings ()
+  "Prompt user to configure search settings: regexp, whole-word, case-sensitivity."
   (interactive)
-  (if (use-region-p)
-      (let ((text (buffer-substring-no-properties (region-beginning) (region-end))))
-        (deactivate-mark)
-        (isearch-forward nil 1)
-        (setq isearch-string text
-              isearch-message text)
-        (isearch-update))
-    (isearch-forward)))
+  (let* ((regexp-choice (completing-read
+                         (format "Search :: Regexp [current: %s]: " (if my-search-use-regexp "on" "off"))
+                         (if my-search-use-regexp '("on" "off") '("off" "on")) nil t))
+         (word-choice (completing-read
+                       (format "Search :: Whole word [current: %s]: " (if my-search-whole-word "on" "off"))
+                       (if my-search-whole-word '("on" "off") '("off" "on")) nil t))
+         (case-choice (completing-read
+                       (format "Search :: Case sensitive [current: %s]: " (if my-search-case-sensitive "on" "off"))
+                       (if my-search-case-sensitive '("on" "off") '("off" "on")) nil t)))
+    (setq my-search-use-regexp (string= regexp-choice "on"))
+    (setq my-search-whole-word (string= word-choice "on"))
+    (setq my-search-case-sensitive (string= case-choice "on"))
+    (message (my-search-settings-status))))
+
+(defun my-search-transform-pattern (text)
+  "Transform TEXT according to current search settings.
+Applies regexp-quote if not in regexp, and word boundaries if whole-word mode."
+  (let ((pattern (if my-search-use-regexp text (regexp-quote text))))
+    (if my-search-whole-word
+        (concat "\\_<" pattern "\\_>")
+      pattern)))
+
+(defvar my-isearch-apply-settings nil
+  "When non-nil, apply custom search settings to isearch on next start.")
+
+(defun my-isearch-apply-custom-settings ()
+  "Apply custom search settings when isearch starts via my-isearch-forward."
+  (when my-isearch-apply-settings
+    (setq isearch-case-fold-search (not my-search-case-sensitive))
+    (setq my-isearch-apply-settings nil)))
+
+(add-hook 'isearch-mode-hook #'my-isearch-apply-custom-settings)
+
+(defun my-isearch-forward ()
+  "Start isearch, using selected text if region is active.
+Respects search settings: regexp, whole-word, case-sensitivity."
+  (interactive)
+  (setq my-isearch-apply-settings t)
+  (cond
+   ;; Region active: use selected text as search string
+   ((use-region-p)
+    (let* ((raw-text (buffer-substring-no-properties (region-beginning) (region-end)))
+           (use-regexp (or my-search-use-regexp my-search-whole-word))
+           (text (cond
+                  ((and my-search-whole-word my-search-use-regexp)
+                   (concat "\\_<" raw-text "\\_>"))
+                  (my-search-whole-word
+                   (concat "\\_<" (regexp-quote raw-text) "\\_>"))
+                  (my-search-use-regexp
+                   raw-text)
+                  (t raw-text))))
+      (deactivate-mark)
+      (if use-regexp
+          (isearch-forward-regexp nil 1)
+        (isearch-forward nil 1))
+      (setq isearch-string text
+            isearch-message (if use-regexp text raw-text))
+      (isearch-update)))
+   ;; Whole word mode without selection: use isearch-forward-word
+   (my-search-whole-word
+    (isearch-forward-word))
+   ;; Regexp mode
+   (my-search-use-regexp
+    (isearch-forward-regexp))
+   ;; Normal literal search
+   (t
+    (isearch-forward))))
 
 (defun my-isearch-cancel-or-exit ()
   "Cancel isearch if search string is empty, otherwise exit at current position."
@@ -679,12 +767,22 @@ Falls back to dumb-jump if xref fails."
     (isearch-yank-string (buffer-substring-no-properties $p1 $p2))))
 
 (defun my-project-find-text ()
-  "Search for literal text in project."
+  "Search for text in project.
+Respects search settings: regexp, whole-word, case-sensitivity."
   (interactive)
   (let* ((initial (when (use-region-p)
                     (buffer-substring-no-properties (region-beginning) (region-end))))
-         (text (read-string "Search in project: " initial)))
-    (project-find-regexp (regexp-quote text))))
+         (settings-hint (concat
+                         (if my-search-use-regexp "regex" "")
+                         (if my-search-whole-word (if my-search-use-regexp ",word" "word") "")
+                         (if my-search-case-sensitive
+                             (if (or my-search-use-regexp my-search-whole-word) ",case" "case") "")))
+         (prompt (if (string= settings-hint "")
+                     "Search in project: "
+                   (format "Search in project [%s]: " settings-hint)))
+         (text (read-string prompt initial))
+         (case-fold-search (not my-search-case-sensitive)))
+    (project-find-regexp (my-search-transform-pattern text))))
 
 (defun my-project-find-word-at-point ()
   "Search for word under cursor in project."
@@ -702,22 +800,59 @@ Falls back to dumb-jump if xref fails."
       (project-find-regexp (regexp-quote word)))))
 
 (defun my-find-replace ()
-  "Find and replace with mode selection: project, file, or selection."
+  "Find and replace. If region is active, replace in region. Otherwise prompt for file or project.
+Respects search settings: regexp, whole-word, case-sensitivity."
   (interactive)
-  (let* ((mode (completing-read "Replace in: " '("file" "project" "selection") nil t))
-         (search (read-string "Find: "))
-         (replace (read-string (format "Replace '%s' with: " search))))
-    (cond
-     ((string= mode "project")
-      (project-query-replace-regexp (regexp-quote search) replace))
-     ((string= mode "file")
-      (save-excursion
-        (goto-char (point-min))
-        (query-replace search replace)))
-     ((string= mode "selection")
-      (if (use-region-p)
-          (query-replace search replace nil (region-beginning) (region-end))
-        (message "No region selected."))))))
+  (let* ((settings-hint (concat
+                         (if my-search-use-regexp "regex" "")
+                         (if my-search-whole-word (if my-search-use-regexp ",word" "word") "")
+                         (if my-search-case-sensitive
+                             (if (or my-search-use-regexp my-search-whole-word) ",case" "case") "")))
+         (find-prompt (if (string= settings-hint "")
+                          "Find: "
+                        (format "Find [%s]: " settings-hint)))
+         (case-fold-search (not my-search-case-sensitive))
+         (use-regexp (or my-search-use-regexp my-search-whole-word)))
+    (if (use-region-p)
+        (let* ((beg (region-beginning))
+               (end (region-end))
+               (search (read-string find-prompt))
+               (pattern (my-search-transform-pattern search))
+               (replace (read-string (format "Replace '%s' with: " search))))
+          (if use-regexp
+              (query-replace-regexp pattern replace nil beg end)
+            (query-replace search replace nil beg end)))
+      (let* ((mode (completing-read "Replace in: " '("file" "project") nil t))
+             (search (read-string find-prompt))
+             (pattern (my-search-transform-pattern search))
+             (replace (read-string (format "Replace '%s' with: " search))))
+        (cond
+         ((string= mode "project")
+          (project-query-replace-regexp pattern replace))
+         ((string= mode "file")
+          (save-excursion
+            (goto-char (point-min))
+            (if use-regexp
+                (query-replace-regexp pattern replace)
+              (query-replace search replace)))))))))
+
+;;; ============================================================================
+;;; CUSTOM FUNCTIONS - Clipboard (CUA-style)
+;;; ============================================================================
+
+(defun my-copy ()
+  "Copy region to clipboard. If no region is active, copy the current line."
+  (interactive)
+  (if (use-region-p)
+      (clipboard-kill-ring-save (region-beginning) (region-end))
+    (clipboard-kill-ring-save (line-beginning-position) (line-beginning-position 2))))
+
+(defun my-cut ()
+  "Cut region to clipboard. If no region is active, cut the current line."
+  (interactive)
+  (if (use-region-p)
+      (clipboard-kill-region (region-beginning) (region-end))
+    (clipboard-kill-region (line-beginning-position) (line-beginning-position 2))))
 
 ;;; ============================================================================
 ;;; CUSTOM FUNCTIONS - Line Operations
@@ -926,7 +1061,7 @@ Does not copy to kill ring."
 (defun my-select-theme ()
   "Select and load a theme from all available themes."
   (interactive)
-  (let* ((themes (append '("default" "default-dark") (mapcar #'symbol-name (custom-available-themes))))
+  (let* ((themes (append '("default" "default-dark" "xah") (mapcar #'symbol-name (custom-available-themes))))
          (choice (completing-read "Theme: " themes nil t)))
     (when my-current-theme
       (disable-theme my-current-theme))
@@ -938,6 +1073,10 @@ Does not copy to kill ring."
      ((string= choice "default-dark")
       (set-foreground-color "white")
       (set-background-color "black")
+      (setq my-current-theme nil))
+     ((string= choice "xah")
+      (set-foreground-color "black")
+      (set-background-color "honeydew")
       (setq my-current-theme nil))
      (t
       (setq my-current-theme (intern choice))
