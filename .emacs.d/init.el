@@ -38,8 +38,14 @@
 ;; Search
 (require 'xah-find)
 
+;; Git
+(require 'simple-git)
+
 ;; Debugging
 (require 'dape)
+
+;; Emacs Debugging
+(require 'command-log-mode)
 
 ;;; ============================================================================
 ;;; MODE ASSOCIATIONS
@@ -162,23 +168,23 @@ Start typing to search - LSP provides fuzzy matching."
 ;; Kill debug session before quitting Emacs
 (add-hook 'kill-emacs-hook
           (lambda ()
-            (ignore-errors (dape-quit))
-            ;; Also kill any lingering dlv processes
-            (dolist (proc (process-list))
-              (when (and (process-live-p proc)
-                         (string-match-p "\\(dape\\|dlv\\)" (process-name proc)))
-                (ignore-errors
-                  (let ((pid (process-id proc)))
-                    (when pid (my-kill-process-tree pid)))
-                  (delete-process proc))))))
+            (ignore-errors (dape-quit))))
 
 (defun my-dape-start-or-continue ()
   "Start debugging or continue if already in a debug session.
-If stopped at a breakpoint, continue. Otherwise start a new debug session."
+If stopped at a breakpoint, continue. If running, do nothing.
+If no session active, start a new debug session."
   (interactive)
-  (if-let ((conn (dape--live-connection 'stopped t)))
-      (dape-continue conn)
-    (call-interactively #'dape)))
+  (cond
+   ;; Stopped at breakpoint - continue
+   ((dape--live-connection 'stopped t)
+    (dape-continue (dape--live-connection 'stopped t)))
+   ;; Session active but running - do nothing
+   ((dape--live-connection 'parent t)
+    (message "Debug session already running"))
+   ;; No session - start new one
+   (t
+    (call-interactively #'dape))))
 
 ;;; ============================================================================
 ;;; FLYMAKE & DIAGNOSTICS
@@ -344,7 +350,7 @@ If stopped at a breakpoint, continue. Otherwise start a new debug session."
 (setq compilation-scroll-output -1)
 (setq compilation-save-buffers-predicate 'ignore)
 
-(defvar my-bottom-panel-buffers '("\\*compilation\\*" "\\*xref\\*" "\\*Flymake diagnostics.*\\*" "\\*grep\\*")
+(defvar my-bottom-panel-buffers '("\\*compilation\\*" "\\*xref\\*" "\\*Flymake diagnostics.*\\*" "\\*grep\\*" "\\*simple-git.*\\*")
   "List of buffer name patterns for bottom panel.")
 
 (defun my-bottom-panel-buffer-p (buf)
@@ -379,21 +385,62 @@ If stopped at a breakpoint, continue. Otherwise start a new debug session."
              '("\\*Flymake diagnostics.*\\*" (my-display-in-bottom-panel) (side . bottom) (slot . 1) (window-height . 0.25)))
 (add-to-list 'display-buffer-alist
              '("\\*grep\\*" (my-display-in-bottom-panel) (side . bottom) (slot . 1) (window-height . 0.25)))
+(add-to-list 'display-buffer-alist
+             '("\\*simple-git.*\\*" (my-display-in-bottom-panel) (side . bottom) (slot . 1) (window-height . 0.25)))
+
+(defun my-dape-panels-visible-p ()
+  "Return non-nil if any dape panel is currently visible."
+  (or (get-buffer-window "*dape-repl*")
+      (cl-some #'get-buffer-window
+               (seq-filter (lambda (buf)
+                             (string-prefix-p "*dape-info" (buffer-name buf)))
+                           (buffer-list)))))
+
+(defun my-close-dape-panels ()
+  "Close all dape panels."
+  ;; Close dape-repl
+  (when-let ((win (get-buffer-window "*dape-repl*")))
+    (delete-window win))
+  ;; Close dape-info buffers
+  (dolist (buf (buffer-list))
+    (when (string-prefix-p "*dape-info" (buffer-name buf))
+      (when-let ((win (get-buffer-window buf)))
+        (delete-window win)))))
+
+(defun my-open-dape-panels ()
+  "Open dape panels if debugging is active."
+  (when (dape--live-connection 'parent t)
+    (dape-info)
+    (when (get-buffer "*dape-repl*")
+      (dape-repl))))
 
 (defun my-bottom-panel-toggle ()
-  "Toggle the bottom panel. Close if visible, open if hidden."
+  "Smart toggle for bottom panel and dape UI.
+If any panel is visible, close all. If none visible, open all."
   (interactive)
-  (let ((panel-window (my-get-bottom-panel-window)))
-    (if panel-window
-        (delete-window panel-window)
-      (let ((matching-buffers (seq-filter
-                               (lambda (buf)
-                                 (seq-some (lambda (pat) (string-match-p pat (buffer-name buf)))
-                                           my-bottom-panel-buffers))
-                               (buffer-list))))
-        (if matching-buffers
-            (my-display-in-bottom-panel (car matching-buffers) '((window-height . 0.25)))
-          (message "No bottom panel buffers open."))))))
+  (let ((bottom-visible (my-get-bottom-panel-window))
+        (dape-visible (my-dape-panels-visible-p))
+        (dape-active (dape--live-connection 'parent t)))
+    (if (or bottom-visible dape-visible)
+        ;; Something is visible - close everything
+        (progn
+          (when bottom-visible
+            (delete-window bottom-visible))
+          (when dape-visible
+            (my-close-dape-panels)))
+      ;; Nothing visible - open everything
+      (progn
+        ;; Open dape panels if debugging
+        (when dape-active
+          (my-open-dape-panels))
+        ;; Open bottom panel if available
+        (let ((matching-buffers (seq-filter
+                                 (lambda (buf)
+                                   (seq-some (lambda (pat) (string-match-p pat (buffer-name buf)))
+                                             my-bottom-panel-buffers))
+                                 (buffer-list))))
+          (when matching-buffers
+            (my-display-in-bottom-panel (car matching-buffers) '((window-height . 0.25)))))))))
 
 ;;; ============================================================================
 ;;; BACKUP & AUTOSAVE SETTINGS
@@ -415,26 +462,27 @@ If stopped at a breakpoint, continue. Otherwise start a new debug session."
 ;;; PROCESS MANAGEMENT
 ;;; ============================================================================
 
-(defun my-kill-process-tree (pid)
-  "Kill PID and all its descendant processes."
+(defun my-kill-process-tree (pid &optional kill-root)
+  "Kill all descendant processes of PID. Also kill PID itself if KILL-ROOT is non-nil."
   (let ((children (split-string
                    (shell-command-to-string
                     (format "pgrep -P %d 2>/dev/null" pid))
                    "\n" t)))
     (dolist (child children)
       (when (string-match "^[0-9]+$" child)
-        (my-kill-process-tree (string-to-number child)))))
-  (ignore-errors (call-process "kill" nil nil nil "-9" (number-to-string pid))))
+        (my-kill-process-tree (string-to-number child) t))))  ; always kill descendants
+  (when kill-root
+    (ignore-errors (call-process "kill" nil nil nil "-9" (number-to-string pid)))))
 
 ;; Ensure all subprocesses are killed when Emacs exits
 (add-hook 'kill-emacs-hook
           (lambda ()
+            ;; Kill all child processes of Emacs (and their children)
+            (my-kill-process-tree (emacs-pid))
+            ;; Also clean up via Emacs process list
             (dolist (proc (process-list))
               (when (process-live-p proc)
-                (let ((pid (process-id proc)))
-                  (when pid
-                    (my-kill-process-tree pid)))
-                (set-process-query-on-exit-flag proc t)
+                (set-process-query-on-exit-flag proc nil)
                 (ignore-errors (delete-process proc))))))
 
 ;; Kill terminal buffer when process exits
@@ -468,6 +516,7 @@ If stopped at a breakpoint, continue. Otherwise start a new debug session."
 (global-set-key (kbd "C-n") (lambda () (interactive) (switch-to-buffer (generate-new-buffer "untitled"))))
 (global-set-key (kbd "C-o") 'find-file)
 (global-set-key (kbd "C-p") 'project-find-file)
+(global-set-key (kbd "C-S-p") 'execute-extended-command)
 (global-set-key (kbd "C-3") 'switch-to-buffer)
 (global-set-key (kbd "C-4") 'find-file)
 (global-set-key (kbd "C-q") 'save-buffers-kill-terminal)
@@ -493,6 +542,7 @@ If stopped at a breakpoint, continue. Otherwise start a new debug session."
 
 ;; --- Clipboard & Kill Ring (CUA-style) ---
 (global-set-key (kbd "C-z") 'undo)
+(global-set-key (kbd "C-S-z") 'undo-redo)
 (global-set-key (kbd "C-v") 'clipboard-yank)
 (global-set-key (kbd "C-c") 'my-copy)
 (global-set-key (kbd "C-x") 'my-cut)
@@ -557,10 +607,6 @@ If stopped at a breakpoint, continue. Otherwise start a new debug session."
 (global-set-key (kbd "<f6>") 'my-file-manager-command)
 (global-set-key (kbd "<C-f6>") 'my-terminal-emulator-command)
 
-;; --- Project Management ---
-(global-set-key (kbd "<f7>") 'project-switch-project)
-(global-set-key (kbd "C-S-p") 'execute-extended-command)
-
 ;; --- Themes ---
 (global-set-key (kbd "<f3>") 'my-select-theme)
 
@@ -592,6 +638,10 @@ If stopped at a breakpoint, continue. Otherwise start a new debug session."
 ;; --- Macros ---
 (global-set-key (kbd "C-S-r") 'my-toggle-macro-recording)
 (global-set-key (kbd "C-M-r") 'my-call-macro)
+
+;; --- Git ---
+(global-set-key (kbd "<f7>") 'simple-git-status)
+(global-set-key (kbd "C-<f7>") 'simple-git-file-history)
 
 ;; --- Misc ---
 (global-set-key (kbd "C-e") 'my-select-inside-parens)
@@ -1150,31 +1200,38 @@ Does not copy to kill ring."
 ;;; ============================================================================
 
 (add-to-list 'custom-theme-load-path "~/.emacs.d/themes/")
-(defvar my-current-theme 'bedroom "Currently active theme.")
+(defcustom my-current-theme 'bedroom
+  "Currently active theme. Saved automatically when changed."
+  :type 'symbol
+  :group 'my-settings)
+
+(defun my-apply-builtin-theme (theme)
+  "Apply a built-in color theme (not a real Emacs theme)."
+  (pcase theme
+    ('default
+     (set-foreground-color "black")
+     (set-background-color "white"))
+    ('default-dark
+     (set-foreground-color "white")
+     (set-background-color "black"))
+    ('xah
+     (set-foreground-color "black")
+     (set-background-color "honeydew"))))
 
 (defun my-select-theme ()
-  "Select and load a theme from all available themes."
+  "Select and load a theme from all available themes. Saves choice for next session."
   (interactive)
   (let* ((themes (append '("default" "default-dark" "xah") (mapcar #'symbol-name (custom-available-themes))))
-         (choice (completing-read "Theme: " themes nil t)))
-    (when my-current-theme
+         (choice (completing-read "Theme: " themes nil t))
+         (theme-sym (intern choice)))
+    ;; Disable current theme if it's a real theme
+    (when (and my-current-theme
+               (not (memq my-current-theme '(default default-dark xah))))
       (disable-theme my-current-theme))
-    (cond
-     ((string= choice "default")
-      (set-foreground-color "black")
-      (set-background-color "white")
-      (setq my-current-theme nil))
-     ((string= choice "default-dark")
-      (set-foreground-color "white")
-      (set-background-color "black")
-      (setq my-current-theme nil))
-     ((string= choice "xah")
-      (set-foreground-color "black")
-      (set-background-color "honeydew")
-      (setq my-current-theme nil))
-     (t
-      (setq my-current-theme (intern choice))
-      (load-theme my-current-theme t)))))
+    (if (memq theme-sym '(default default-dark xah))
+        (my-apply-builtin-theme theme-sym)
+      (load-theme theme-sym t))
+    (customize-save-variable 'my-current-theme theme-sym)))
 
 ;;; ============================================================================
 ;;; CUSTOM FUNCTIONS - Zoom
@@ -1208,7 +1265,7 @@ Does not copy to kill ring."
           (when proc
             (let ((pid (process-id proc)))
               (when pid
-                (my-kill-process-tree pid)))
+                (my-kill-process-tree pid t)))
             (set-process-query-on-exit-flag proc nil)))
         (with-current-buffer buf
           (set-buffer-modified-p nil))
@@ -1374,12 +1431,6 @@ Use in `isearch-mode-end-hook'."
 
 ;; (set-face-attribute 'default nil :font "Consolas-15")
 
-;; Disable current theme before loading to prevent stacking on config reload
-(when my-current-theme
-  (disable-theme my-current-theme))
-(setq my-current-theme 'bedroom)
-(load-theme 'bedroom t)
-
 ;;; ============================================================================
 ;;; CUSTOM
 ;;; ============================================================================
@@ -1389,6 +1440,7 @@ Use in `isearch-mode-end-hook'."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(my-current-theme 'valigo)
  '(safe-local-variable-directories '("/Users/mta/projects/cdrateline.com_2.0/")))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -1396,5 +1448,15 @@ Use in `isearch-mode-end-hook'."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  )
+
+;;; ============================================================================
+;;; LOAD THEME (must be after custom-set-variables)
+;;; ============================================================================
+
+(mapc #'disable-theme custom-enabled-themes)
+(when my-current-theme
+  (if (memq my-current-theme '(default default-dark xah))
+      (my-apply-builtin-theme my-current-theme)
+    (load-theme my-current-theme t)))
 
 ;;; init.el ends here
