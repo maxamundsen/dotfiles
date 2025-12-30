@@ -199,7 +199,6 @@
     "workbench.editor.empty.hint": "hidden",
     "chat.agent.enabled": false,
     "chat.disableAIFeatures": true,
-    "workbench.colorTheme": "Default Light+",
     "workbench.preferredDarkColorTheme": "Visual Studio Dark",
     "workbench.preferredLightColorTheme": "Visual Studio Light"
 }

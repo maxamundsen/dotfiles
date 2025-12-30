@@ -38,6 +38,9 @@
 ;; Search
 (require 'xah-find)
 
+;; Debugging
+(require 'dape)
+
 ;;; ============================================================================
 ;;; MODE ASSOCIATIONS
 ;;; ============================================================================
@@ -99,37 +102,83 @@
 (advice-add 'y-or-n-p :around #'my-auto-confirm-modified-buffer)
 
 (defun my-lsp-find-workspace-symbol ()
-  "Interactively search for symbols in workspace using LSP."
+  "Interactively search for symbols in workspace using LSP.
+Start typing to search - LSP provides fuzzy matching."
   (interactive)
   (if (eglot-managed-p)
       (let* ((server (eglot-current-server))
              (root (project-root (project-current)))
-             (query (read-string "Symbol query: "))
-             (resp (jsonrpc-request server :workspace/symbol `(:query ,query)))
-             (items (append resp nil))
-             (candidates
-              (delq nil
-                    (mapcar (lambda (item)
-                              (condition-case nil
-                                  (let* ((name (plist-get item :name))
-                                         (loc (plist-get item :location))
-                                         (uri (plist-get loc :uri))
-                                         (range (plist-get loc :range))
-                                         (start (plist-get range :start))
-                                         (line (1+ (plist-get start :line)))
-                                         (file (eglot-uri-to-path uri))
-                                         (rel-path (file-relative-name file root)))
-                                    (propertize (format "%s  %s:%d" name rel-path line)
-                                                'file file
-                                                'line line))
-                                (error nil)))
-                            items)))
-             (candidate (completing-read "Symbol: " candidates nil t)))
-        (when (and candidate (get-text-property 0 'file candidate))
-          (find-file (get-text-property 0 'file candidate))
+             (all-candidates '())
+             (completion-styles '(orderless basic))
+             (completion-ignore-case t)
+             (collection
+              (lambda (string pred action)
+                (when (and (> (length string) 0) (not (eq action 'metadata)))
+                  (let* ((resp (jsonrpc-request server :workspace/symbol `(:query ,string)))
+                         (items (append resp nil)))
+                    (dolist (item items)
+                      (condition-case nil
+                          (let* ((name (plist-get item :name))
+                                 (loc (plist-get item :location))
+                                 (uri (plist-get loc :uri))
+                                 (range (plist-get loc :range))
+                                 (start (plist-get range :start))
+                                 (line (plist-get start :line))
+                                 (char (plist-get start :character))
+                                 (file (eglot-uri-to-path uri))
+                                 (rel-path (file-relative-name file root))
+                                 (display (format "%s  %s:%d" name rel-path (1+ line))))
+                            (unless (seq-find (lambda (c) (string= (car c) display)) all-candidates)
+                              (push (list display file line char) all-candidates)))
+                        (error nil)))))
+                ;; Sort by symbol name length (shorter first)
+                (let ((strings (mapcar #'car
+                                       (sort (copy-sequence all-candidates)
+                                             (lambda (a b)
+                                               (< (length (car (split-string (car a) "  ")))
+                                                  (length (car (split-string (car b) "  ")))))))))
+                  (complete-with-action action strings string pred))))
+             (selection (completing-read "Symbol (type to search): " collection nil t)))
+        (when-let ((match (seq-find (lambda (c) (string= (car c) selection)) all-candidates)))
+          (find-file (nth 1 match))
           (goto-char (point-min))
-          (forward-line (1- (get-text-property 0 'line candidate)))))
+          (forward-line (nth 2 match))
+          (forward-char (or (nth 3 match) 0))))
     (call-interactively 'xref-find-apropos)))
+
+;;; ============================================================================
+;;; DAPE (DEBUGGING)
+;;; ============================================================================
+
+;; Go debugging with dlv (requires: go install github.com/go-delve/delve/cmd/dlv@latest)
+;; Use M-x dape or F5 to start debugging, select "dlv" configuration
+
+;; Show inlay hints for variable values while debugging
+(setq dape-inlay-hints t)
+
+;; Save buffers before starting debug session
+(add-hook 'dape-start-hook (lambda () (save-some-buffers t t)))
+
+;; Kill debug session before quitting Emacs
+(add-hook 'kill-emacs-hook
+          (lambda ()
+            (ignore-errors (dape-quit))
+            ;; Also kill any lingering dlv processes
+            (dolist (proc (process-list))
+              (when (and (process-live-p proc)
+                         (string-match-p "\\(dape\\|dlv\\)" (process-name proc)))
+                (ignore-errors
+                  (let ((pid (process-id proc)))
+                    (when pid (my-kill-process-tree pid)))
+                  (delete-process proc))))))
+
+(defun my-dape-start-or-continue ()
+  "Start debugging or continue if already in a debug session.
+If stopped at a breakpoint, continue. Otherwise start a new debug session."
+  (interactive)
+  (if-let ((conn (dape--live-connection 'stopped t)))
+      (dape-continue conn)
+    (call-interactively #'dape)))
 
 ;;; ============================================================================
 ;;; FLYMAKE & DIAGNOSTICS
@@ -258,6 +307,7 @@
 (global-auto-revert-mode t)
 (global-so-long-mode 1)
 (global-hl-line-mode -1)
+(setq enable-local-variables :all)  ; trust .dir-locals.el files
 
 ;; display
 (setq-default truncate-lines 1)
@@ -275,7 +325,6 @@
 (setq-default require-final-newline t)
 (setq ediff-split-window-function 'split-window-horizontally)
 (setq dired-dnd-protocol-alist nil)
-(setq custom-file "~/.emacs.d/custom.el")
 
 ;; mouse - disable right-click context menu
 (global-set-key [mouse-3] 'ignore)
@@ -317,20 +366,19 @@
         (progn
           (set-window-buffer window buffer)
           window)
-      (let ((new-window (display-buffer-at-bottom buffer alist)))
-        (when new-window
-          (with-selected-window new-window
-            (set-window-parameter new-window 'window-height 0.25)))
-        new-window))))
+      (display-buffer-in-side-window buffer
+                                     '((side . bottom)
+                                       (slot . 1)
+                                       (window-height . 0.25))))))
 
 (add-to-list 'display-buffer-alist
-             '("\\*compilation\\*" (my-display-in-bottom-panel) (window-height . 0.25)))
+             '("\\*compilation\\*" (my-display-in-bottom-panel) (side . bottom) (slot . 1) (window-height . 0.25)))
 (add-to-list 'display-buffer-alist
-             '("\\*xref\\*" (my-display-in-bottom-panel) (window-height . 0.25)))
+             '("\\*xref\\*" (my-display-in-bottom-panel) (side . bottom) (slot . 1) (window-height . 0.25)))
 (add-to-list 'display-buffer-alist
-             '("\\*Flymake diagnostics.*\\*" (my-display-in-bottom-panel) (window-height . 0.25)))
+             '("\\*Flymake diagnostics.*\\*" (my-display-in-bottom-panel) (side . bottom) (slot . 1) (window-height . 0.25)))
 (add-to-list 'display-buffer-alist
-             '("\\*grep\\*" (my-display-in-bottom-panel) (window-height . 0.25)))
+             '("\\*grep\\*" (my-display-in-bottom-panel) (side . bottom) (slot . 1) (window-height . 0.25)))
 
 (defun my-bottom-panel-toggle ()
   "Toggle the bottom panel. Close if visible, open if hidden."
@@ -433,7 +481,7 @@
 (global-set-key (kbd "C-<next>") 'next-multiframe-window)
 (global-set-key (kbd "C-1") 'my-select-left-pane)
 (global-set-key (kbd "C-2") 'my-select-right-pane)
-(global-set-key (kbd "<f11>") 'toggle-frame-maximized)
+(global-set-key (kbd "M-<f11>") 'toggle-frame-maximized)
 
 ;; --- Selection & Editing ---
 (global-set-key (kbd "C-a") 'mark-whole-buffer)
@@ -454,7 +502,7 @@
 (global-set-key (kbd "<end>") 'move-end-of-line)
 (global-set-key (kbd "M-p") 'backward-paragraph)
 (global-set-key (kbd "M-n") 'forward-paragraph)
-(global-set-key [f8] 'goto-line)
+(global-set-key (kbd "C-S-g") 'goto-line)
 (when (eq system-type 'darwin)
   (global-set-key (kbd "C-<left>") 'my-smart-home)
   (global-set-key (kbd "C-<right>") 'move-end-of-line))
@@ -472,7 +520,8 @@
 
 ;; --- Code Navigation (xref/LSP) ---
 (global-set-key (kbd "<f12>") 'my-xref-find-definitions-same-pane)
-(global-set-key (kbd "C-<f12>") 'xref-find-references)
+(global-set-key (kbd "C-<f12>") 'my-xref-find-definitions-right-pane)
+(global-set-key (kbd "C-S-<f12>") 'xref-find-references)
 (global-set-key (kbd "C-{") 'xref-go-back)
 (global-set-key (kbd "C-}") 'xref-go-forward)
 (global-set-key (kbd "<mouse-3>") 'xref-go-back)
@@ -488,8 +537,21 @@
 
 ;; --- Compilation & Build ---
 (global-set-key (kbd "<f1>") 'my-bottom-panel-toggle)
-(global-set-key (kbd "<f5>") 'my-compile-last)
-(global-set-key (kbd "<C-S-f5>") 'my-compile-custom)
+(global-set-key (kbd "<f4>") 'next-error)
+(global-set-key (kbd "S-<f4>") 'previous-error)
+(global-set-key (kbd "C-b") 'my-compile-last)
+(global-set-key (kbd "C-S-b") 'my-compile-custom)
+
+;; --- Debugging (dape, VS Code-style) ---
+(global-set-key (kbd "<f5>") 'my-dape-start-or-continue)
+(global-set-key (kbd "S-<f5>") 'dape-quit)
+(global-set-key (kbd "C-S-<f5>") 'dape-restart)
+(global-set-key (kbd "<f9>") 'dape-breakpoint-toggle)
+(global-set-key (kbd "<f10>") 'dape-next)
+(global-set-key (kbd "<f11>") 'dape-step-in)
+(global-set-key (kbd "S-<f11>") 'dape-step-out)
+(global-set-key (kbd "S-<f9>") 'dape-breakpoint-remove-all)
+(global-set-key (kbd "C-<f5>") 'dape-continue)
 
 ;; --- External Tools ---
 (global-set-key (kbd "<f6>") 'my-file-manager-command)
@@ -498,10 +560,6 @@
 ;; --- Project Management ---
 (global-set-key (kbd "<f7>") 'project-switch-project)
 (global-set-key (kbd "C-S-p") 'execute-extended-command)
-
-;; --- Bookmarks ---
-(global-set-key (kbd "<f9>") 'bookmark-jump)
-(global-set-key (kbd "<f10>") 'bookmark-set)
 
 ;; --- Themes ---
 (global-set-key (kbd "<f3>") 'my-select-theme)
@@ -531,11 +589,14 @@
 (global-set-key (kbd "M-<delete>") 'my-delete-word)
 (global-set-key (kbd "C-<backspace>") 'my-backward-delete-word)
 
+;; --- Macros ---
+(global-set-key (kbd "C-S-r") 'my-toggle-macro-recording)
+(global-set-key (kbd "C-M-r") 'my-call-macro)
+
 ;; --- Misc ---
-(global-set-key (kbd "C-e") 'my-copy-path-with-line)
+(global-set-key (kbd "C-e") 'my-select-inside-parens)
+(global-set-key (kbd "C-y") 'my-copy-path-with-line)
 (global-set-key (kbd "C-!") 'my-insert-shell-command-output)
-(global-set-key (kbd "C-<f4>") 'my-toggle-macro-recording)
-(global-set-key (kbd "<f4>") 'my-call-macro)
 
 ;; --- Minibuffer Keybindings ---
 (define-key minibuffer-local-filename-completion-map (kbd "C-2") 'my-find-file-right-pane)
@@ -598,11 +659,12 @@
       (move-beginning-of-line 1))))
 
 (defun my-get-top-windows ()
-  "Get windows in the top portion of the frame (not bottom compilation)."
+  "Get windows in the top portion of the frame (not bottom compilation or dape)."
   (let ((windows '()))
     (walk-windows
      (lambda (w)
-       (when (window-at-side-p w 'top)
+       (when (and (window-at-side-p w 'top)
+                  (not (string-prefix-p "*dape-" (buffer-name (window-buffer w)))))
          (push w windows))))
     (sort windows (lambda (a b) (< (car (window-edges a)) (car (window-edges b)))))))
 
@@ -631,6 +693,22 @@ Falls back to dumb-jump if xref fails."
   (let ((identifier (thing-at-point 'symbol t)))
     (if (null identifier)
         (message "No symbol at point")
+      (condition-case nil
+          (let ((xrefs (xref-backend-definitions (xref-find-backend) identifier)))
+            (if xrefs
+                (xref-find-definitions identifier)
+              (dumb-jump-go)))
+        (error (dumb-jump-go))))))
+
+(defun my-xref-find-definitions-right-pane ()
+  "Find definition and show it in a new pane split to the right.
+Falls back to dumb-jump if xref fails."
+  (interactive)
+  (let ((identifier (thing-at-point 'symbol t)))
+    (if (null identifier)
+        (message "No symbol at point")
+      (split-window-right)
+      (other-window 1)
       (condition-case nil
           (let ((xrefs (xref-backend-definitions (xref-find-backend) identifier)))
             (if xrefs
@@ -867,6 +945,20 @@ Respects search settings: regexp, whole-word, case-sensitivity."
     (set-mark (point))
     (forward-line 1)))
 
+(defun my-select-inside-parens ()
+  "Select the contents inside the nearest enclosing parentheses, brackets, or braces."
+  (interactive)
+  (let ((start nil) (end nil))
+    (save-excursion
+      (ignore-errors
+        (up-list -1 t t)  ; go backward, escape strings, no syntax crossing
+        (setq start (1+ (point)))
+        (forward-sexp 1)
+        (setq end (1- (point)))))
+    (when (and start end)
+      (goto-char start)
+      (set-mark end))))
+
 (defun my-toggle-comment ()
   "Toggle comment on line or region without moving point."
   (interactive)
@@ -1002,6 +1094,7 @@ Does not copy to kill ring."
 (defun my-compile-custom ()
   "Run a custom compile command in the project root."
   (interactive)
+  (save-some-buffers t t)
   (let* ((default-directory (project-root (project-current t)))
          (saved (my-compile-get-saved-command))
          (cmd (read-string "Command: " saved)))
@@ -1011,6 +1104,7 @@ Does not copy to kill ring."
 (defun my-compile-last ()
   "Run last compile command, or prompt for one if none has been run."
   (interactive)
+  (save-some-buffers t t)
   (let* ((default-directory (project-root (project-current t)))
          (cmd (my-compile-get-saved-command)))
     (if cmd
@@ -1228,9 +1322,9 @@ Does not copy to kill ring."
   (if defining-kbd-macro
       (progn
         (kmacro-end-macro nil)
-        (message "Macro recorded. Press F4 to replay."))
+        (message "Macro recorded. Press C-M-r to replay."))
     (kmacro-start-macro nil)
-    (message "Recording macro... Press C-<f4> to stop.")))
+    (message "Recording macro... Press C-S-r to stop.")))
 
 (defun my-call-macro ()
   "Call last macro. If region is active, run macro N times where N is number of selected lines.
@@ -1280,6 +1374,27 @@ Use in `isearch-mode-end-hook'."
 
 ;; (set-face-attribute 'default nil :font "Consolas-15")
 
+;; Disable current theme before loading to prevent stacking on config reload
+(when my-current-theme
+  (disable-theme my-current-theme))
+(setq my-current-theme 'bedroom)
 (load-theme 'bedroom t)
+
+;;; ============================================================================
+;;; CUSTOM
+;;; ============================================================================
+
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(safe-local-variable-directories '("/Users/mta/projects/cdrateline.com_2.0/")))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
 
 ;;; init.el ends here
