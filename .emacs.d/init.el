@@ -10,9 +10,9 @@
   (normal-top-level-add-subdirs-to-load-path))
 
 ;; Core libraries
-(require 's)
 (require 'dash)
 (require 'popup)
+(require 's)
 
 ;; Completion framework
 (require 'vertico)
@@ -34,9 +34,6 @@
 ;; Navigation
 (require 'dumb-jump)
 (require 'eglot)
-
-;; Search
-(require 'xah-find)
 
 ;; Git
 (require 'simple-git)
@@ -78,10 +75,13 @@
 ;;; ============================================================================
 
 ;; dumb-jump as fallback for xref when LSP is not available
-(setq dumb-jump-force-searcher 'grep)
+(setq dumb-jump-force-searcher 'rg)
 (setq dumb-jump-selector 'completing-read)
 (setq xref-show-definitions-function #'xref-show-definitions-completing-read)
 (add-hook 'xref-backend-functions #'dumb-jump-xref-activate 100)
+
+;; Use ripgrep for project-find-regexp (C-S-f) - much faster than grep
+(setq xref-search-program 'ripgrep)
 
 ;;; ============================================================================
 ;;; EGLOT (LSP) CONFIGURATION
@@ -443,6 +443,69 @@ If any panel is visible, close all. If none visible, open all."
             (my-display-in-bottom-panel (car matching-buffers) '((window-height . 0.25)))))))))
 
 ;;; ============================================================================
+;;; RIGHT PANEL / OPENCODE AI PANEL
+;;; ============================================================================
+
+(defvar my-right-panel-buffer "*simple-opencode*"
+  "Buffer name for the right panel.")
+
+(defun my-get-right-panel-window ()
+  "Get existing right panel window if any."
+  (seq-find (lambda (w)
+              (and (window-at-side-p w 'right)
+                   (string= (buffer-name (window-buffer w)) my-right-panel-buffer)))
+            (window-list)))
+
+(defun my-display-in-right-panel (buffer alist)
+  "Display BUFFER in right side panel. ALIST is passed by display-buffer."
+  (let ((window (my-get-right-panel-window)))
+    (if window
+        (progn
+          (set-window-buffer window buffer)
+          window)
+      (let ((new-window (display-buffer-in-side-window
+                         buffer
+                         '((side . right)
+                           (slot . 0)
+                           (window-width . 0.28)
+                           (window-parameters . ((no-delete-other-windows . t)
+                                                 (no-other-window . nil)))))))
+        ;; Preserve window on delete-other-windows
+        (set-window-parameter new-window 'no-delete-other-windows t)
+        new-window))))
+
+;; Register opencode buffer to always use right panel
+(add-to-list 'display-buffer-alist
+             '("\\*simple-opencode\\*"
+               (my-display-in-right-panel)
+               (side . right)
+               (slot . 0)
+               (window-width . 0.28)))
+
+(defun my-opencode-panel-toggle ()
+  "Toggle the OpenCode AI panel on the right side of the screen."
+  (interactive)
+  (let ((window (my-get-right-panel-window)))
+    (if window
+        ;; Panel is visible - close it
+        (delete-window window)
+      ;; Panel not visible - open it
+      (simple-opencode))))
+
+(defun my-opencode-panel-send-region ()
+  "Send selected region to OpenCode panel with a prompt."
+  (interactive)
+  (if (use-region-p)
+      (let ((start (region-beginning))
+            (end (region-end)))
+        ;; Open panel if not visible
+        (unless (my-get-right-panel-window)
+          (my-opencode-panel-toggle))
+        ;; Send region
+        (simple-opencode-send-region start end))
+    (message "No region selected")))
+
+;;; ============================================================================
 ;;; BACKUP & AUTOSAVE SETTINGS
 ;;; ============================================================================
 
@@ -552,7 +615,7 @@ If any panel is visible, close all. If none visible, open all."
 (global-set-key (kbd "<end>") 'move-end-of-line)
 (global-set-key (kbd "M-p") 'backward-paragraph)
 (global-set-key (kbd "M-n") 'forward-paragraph)
-(global-set-key (kbd "C-S-g") 'goto-line)
+(global-set-key (kbd "<f8>") 'goto-line)
 (when (eq system-type 'darwin)
   (global-set-key (kbd "C-<left>") 'my-smart-home)
   (global-set-key (kbd "C-<right>") 'move-end-of-line))
@@ -642,6 +705,11 @@ If any panel is visible, close all. If none visible, open all."
 ;; --- Git ---
 (global-set-key (kbd "<f7>") 'simple-git-status)
 (global-set-key (kbd "C-<f7>") 'simple-git-file-history)
+(global-set-key (kbd "C-S-<f7>") 'simple-git-line-blame)
+
+;; --- OpenCode AI ---
+(global-set-key (kbd "C-?") 'my-opencode-panel-toggle)
+(global-set-key (kbd "C-S-/") 'my-opencode-panel-toggle)  ; Alternative binding
 
 ;; --- Misc ---
 (global-set-key (kbd "C-e") 'my-select-inside-parens)
@@ -1440,7 +1508,7 @@ Use in `isearch-mode-end-hook'."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(my-current-theme 'valigo)
+ '(my-current-theme 'bedroom)
  '(safe-local-variable-directories '("/Users/mta/projects/cdrateline.com_2.0/")))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.

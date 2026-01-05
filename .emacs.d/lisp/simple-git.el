@@ -87,6 +87,28 @@
   (simple-git--root))
 
 ;;; ============================================================================
+;;; Mouse Support
+;;; ============================================================================
+
+(defface simple-git-highlight-face
+  '((t :inherit highlight))
+  "Face for mouse hover on clickable items.")
+
+(defun simple-git-mouse-action (event)
+  "Perform default action at mouse click EVENT."
+  (interactive "e")
+  (mouse-set-point event)
+  (let ((cmd (lookup-key (current-local-map) (kbd "RET"))))
+    (when cmd
+      (call-interactively cmd))))
+
+(defun simple-git-mouse-visit-file (event)
+  "Visit file at mouse click EVENT."
+  (interactive "e")
+  (mouse-set-point event)
+  (simple-git-visit-file))
+
+;;; ============================================================================
 ;;; Status Mode
 ;;; ============================================================================
 
@@ -102,14 +124,16 @@
     (define-key map (kbd "P") #'simple-git-push)
     (define-key map (kbd "F") #'simple-git-pull)
     (define-key map (kbd "b") #'simple-git-switch-branch)
-    (define-key map (kbd "B") #'simple-git-branch-graph)
+    (define-key map (kbd "G") #'simple-git-branch-graph)
     (define-key map (kbd "l") #'simple-git-log)
-    (define-key map (kbd "d") #'simple-git-diff-file)
+    (define-key map (kbd "v") #'simple-git-visit-file)
     (define-key map (kbd "m") #'simple-git-merge)
     (define-key map (kbd "q") #'quit-window)
-    (define-key map (kbd "RET") #'simple-git-visit-file)
+    (define-key map (kbd "RET") #'simple-git-diff-file)
     (define-key map (kbd "n") #'next-line)
     (define-key map (kbd "p") #'previous-line)
+    (define-key map [mouse-1] #'simple-git-mouse-action)
+    (define-key map [C-mouse-1] #'simple-git-mouse-visit-file)
     map)
   "Keymap for `simple-git-status-mode'.")
 
@@ -189,6 +213,8 @@
               "\n\n")
       ;; Help
       (insert "Commands: ")
+      (insert (propertize "RET" 'face 'font-lock-keyword-face) " diff  ")
+      (insert (propertize "v" 'face 'font-lock-keyword-face) "iew file  ")
       (insert (propertize "s" 'face 'font-lock-keyword-face) "tage  ")
       (insert (propertize "u" 'face 'font-lock-keyword-face) "nstage  ")
       (insert (propertize "S" 'face 'font-lock-keyword-face) "tage-all  ")
@@ -197,9 +223,8 @@
       (insert (propertize "P" 'face 'font-lock-keyword-face) "ush  ")
       (insert (propertize "F" 'face 'font-lock-keyword-face) "etch/pull  ")
       (insert (propertize "b" 'face 'font-lock-keyword-face) "ranch  ")
-      (insert (propertize "B" 'face 'font-lock-keyword-face) "ranch-graph  ")
+      (insert (propertize "G" 'face 'font-lock-keyword-face) "raph  ")
       (insert (propertize "l" 'face 'font-lock-keyword-face) "og  ")
-      (insert (propertize "d" 'face 'font-lock-keyword-face) "iff  ")
       (insert (propertize "m" 'face 'font-lock-keyword-face) "erge  ")
       (insert (propertize "r" 'face 'font-lock-keyword-face) "evert  ")
       (insert (propertize "g" 'face 'font-lock-keyword-face) " refresh  ")
@@ -216,8 +241,9 @@
                                          'face 'simple-git-staged-face)
                         (propertize (car item) 'face 'simple-git-staged-face)
                         "\n")
-                (put-text-property line-start (point) 'simple-git-file (car item))
-                (put-text-property line-start (point) 'simple-git-staged t)))
+                (put-text-property line-start (1- (point)) 'simple-git-file (car item))
+                (put-text-property line-start (1- (point)) 'simple-git-staged t)
+                (put-text-property line-start (1- (point)) 'mouse-face 'simple-git-highlight-face)))
           (insert "  (none)\n")))
       (insert "\n")
       ;; Unstaged files
@@ -231,9 +257,10 @@
                                          'face 'simple-git-unstaged-face)
                         (propertize (car item) 'face 'simple-git-unstaged-face)
                         "\n")
-                (put-text-property line-start (point) 'simple-git-file (car item))
-                (put-text-property line-start (point) 'simple-git-staged nil)
-                (put-text-property line-start (point) 'simple-git-unstaged t)))
+                (put-text-property line-start (1- (point)) 'simple-git-file (car item))
+                (put-text-property line-start (1- (point)) 'simple-git-staged nil)
+                (put-text-property line-start (1- (point)) 'simple-git-unstaged t)
+                (put-text-property line-start (1- (point)) 'mouse-face 'simple-git-highlight-face)))
           (insert "  (none)\n")))
       (insert "\n")
       ;; Untracked files
@@ -245,8 +272,9 @@
               (let ((line-start (point)))
                 (insert "  " (propertize file 'face 'simple-git-untracked-face)
                         "\n")
-                (put-text-property line-start (point) 'simple-git-file file)
-                (put-text-property line-start (point) 'simple-git-untracked t)))
+                (put-text-property line-start (1- (point)) 'simple-git-file file)
+                (put-text-property line-start (1- (point)) 'simple-git-untracked t)
+                (put-text-property line-start (1- (point)) 'mouse-face 'simple-git-highlight-face)))
           (insert "  (none)\n")))
       (goto-char (min pos (point-max))))))
 
@@ -501,9 +529,12 @@
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") #'simple-git-log-show-commit)
     (define-key map (kbd "q") #'quit-window)
-    (define-key map (kbd "n") #'next-line)
-    (define-key map (kbd "p") #'previous-line)
     (define-key map (kbd "g") #'simple-git-log-refresh)
+    (define-key map (kbd "n") #'simple-git-log-next-page)
+    (define-key map (kbd "p") #'simple-git-log-prev-page)
+    (define-key map (kbd "N") #'simple-git-log-last-page)
+    (define-key map (kbd "P") #'simple-git-log-first-page)
+    (define-key map [mouse-1] #'simple-git-mouse-action)
     map)
   "Keymap for `simple-git-log-mode'.")
 
@@ -513,7 +544,17 @@
   (setq truncate-lines t))
 
 (defvar simple-git-log-count 50
-  "Number of commits to show in log.")
+  "Number of commits to show per page in log.")
+
+(defvar-local simple-git--log-page 0
+  "Current page number in log view.")
+
+(defvar-local simple-git--log-total-commits nil
+  "Total number of commits in log.")
+
+(defun simple-git--get-total-commits ()
+  "Get total number of commits in repository."
+  (string-to-number (string-trim (simple-git--run "rev-list" "--count" "HEAD"))))
 
 (defun simple-git-log-refresh ()
   "Refresh the log buffer."
@@ -521,34 +562,79 @@
   (when (eq major-mode 'simple-git-log-mode)
     (let ((inhibit-read-only t)
           (pos (point))
-          (default-directory (simple-git--root)))
-      (erase-buffer)
-      (insert (propertize "Commit History" 'face 'simple-git-header-face) "\n")
-      (insert "Commands: "
-              (propertize "RET" 'face 'font-lock-keyword-face) " show commit  "
-              (propertize "g" 'face 'font-lock-keyword-face) " refresh  "
-              (propertize "q" 'face 'font-lock-keyword-face) "uit\n\n")
-      (let ((output (simple-git--run "log"
-                                     (format "-n%d" simple-git-log-count)
-                                     "--pretty=format:%h|%an|%ar|%s")))
-        (dolist (line (split-string output "\n" t))
-          (let* ((parts (split-string line "|"))
-                 (hash (nth 0 parts))
-                 (author (nth 1 parts))
-                 (date (nth 2 parts))
-                 (subject (nth 3 parts)))
-            (insert (propertize hash 'face 'simple-git-commit-hash-face
-                                'simple-git-commit hash)
-                    " "
-                    (propertize (format "%-20s" (truncate-string-to-width (or author "") 20))
-                                'face 'simple-git-commit-author-face)
-                    " "
-                    (propertize (format "%-15s" (truncate-string-to-width (or date "") 15))
-                                'face 'simple-git-commit-date-face)
-                    " "
-                    (or subject "")
-                    "\n"))))
+          (default-directory (simple-git--root))
+          (skip (* simple-git--log-page simple-git-log-count)))
+      ;; Get total commits if not cached
+      (unless simple-git--log-total-commits
+        (setq simple-git--log-total-commits (simple-git--get-total-commits)))
+      (let ((max-page (max 0 (1- (ceiling (/ (float simple-git--log-total-commits) simple-git-log-count))))))
+        ;; Cap page number
+        (when (> simple-git--log-page max-page)
+          (setq simple-git--log-page max-page)
+          (setq skip (* simple-git--log-page simple-git-log-count)))
+        (erase-buffer)
+        (insert (propertize "Commit History" 'face 'simple-git-header-face)
+                (format " (page %d/%d)" (1+ simple-git--log-page) (1+ max-page))
+                "\n")
+        (insert "Commands: "
+                (propertize "RET" 'face 'font-lock-keyword-face) " show commit  "
+                (propertize "n" 'face 'font-lock-keyword-face) "ext page  "
+                (propertize "p" 'face 'font-lock-keyword-face) "rev page  "
+                (propertize "N" 'face 'font-lock-keyword-face) " last  "
+                (propertize "P" 'face 'font-lock-keyword-face) " first  "
+                (propertize "g" 'face 'font-lock-keyword-face) " refresh  "
+                (propertize "q" 'face 'font-lock-keyword-face) "uit\n\n")
+        (let ((output (simple-git--run "log"
+                                       (format "--skip=%d" skip)
+                                       (format "-n%d" simple-git-log-count)
+                                       "--pretty=format:%h|%an|%ar|%s")))
+          (dolist (line (split-string output "\n" t))
+            (let* ((parts (split-string line "|"))
+                   (hash (nth 0 parts))
+                   (author (nth 1 parts))
+                   (date (nth 2 parts))
+                   (subject (nth 3 parts))
+                   (line-start (point)))
+              (insert (propertize hash 'face 'simple-git-commit-hash-face
+                                  'simple-git-commit hash)
+                      " "
+                      (propertize (format "%-20s" (truncate-string-to-width (or author "") 20))
+                                  'face 'simple-git-commit-author-face)
+                      " "
+                      (propertize (format "%-15s" (truncate-string-to-width (or date "") 15))
+                                  'face 'simple-git-commit-date-face)
+                      " "
+                      (or subject "")
+                      "\n")
+              (put-text-property line-start (1- (point)) 'mouse-face 'simple-git-highlight-face)))))
       (goto-char (min pos (point-max))))))
+
+(defun simple-git-log-next-page ()
+  "Go to next page of log."
+  (interactive)
+  (setq simple-git--log-page (1+ simple-git--log-page))
+  (simple-git-log-refresh))
+
+(defun simple-git-log-prev-page ()
+  "Go to previous page of log."
+  (interactive)
+  (when (> simple-git--log-page 0)
+    (setq simple-git--log-page (1- simple-git--log-page))
+    (simple-git-log-refresh)))
+
+(defun simple-git-log-first-page ()
+  "Go to first page of log."
+  (interactive)
+  (setq simple-git--log-page 0)
+  (simple-git-log-refresh))
+
+(defun simple-git-log-last-page ()
+  "Go to last page of log."
+  (interactive)
+  (unless simple-git--log-total-commits
+    (setq simple-git--log-total-commits (simple-git--get-total-commits)))
+  (setq simple-git--log-page (max 0 (1- (ceiling (/ (float simple-git--log-total-commits) simple-git-log-count)))))
+  (simple-git-log-refresh))
 
 (defun simple-git--commit-at-point ()
   "Get the commit hash at point."
@@ -565,6 +651,7 @@
     (define-key map (kbd "q") #'quit-window)
     (define-key map (kbd "n") #'next-line)
     (define-key map (kbd "p") #'previous-line)
+    (define-key map [mouse-1] #'simple-git-mouse-action)
     map)
   "Keymap for `simple-git-commit-detail-mode'.")
 
@@ -623,8 +710,9 @@
                                                   ("D" 'simple-git-unstaged-face)
                                                   (_ 'simple-git-untracked-face)))
                               file "\n")
-                      (put-text-property line-start (point) 'simple-git-commit-file file)
-                      (put-text-property line-start (point) 'simple-git-commit-hash hash))))))))
+                      (put-text-property line-start (1- (point)) 'simple-git-commit-file file)
+                      (put-text-property line-start (1- (point)) 'simple-git-commit-hash hash)
+                      (put-text-property line-start (1- (point)) 'mouse-face 'simple-git-highlight-face))))))))
         (simple-git-commit-detail-mode)
         (goto-char (point-min)))
       (display-buffer buf))))
@@ -728,10 +816,13 @@
     (define-key map (kbd "RET") #'simple-git-file-history-show-diff)
     (define-key map (kbd "v") #'simple-git-file-history-view-file)
     (define-key map (kbd "c") #'simple-git-file-history-show-commit)
+    (define-key map (kbd "n") #'simple-git-file-history-next-page)
+    (define-key map (kbd "p") #'simple-git-file-history-prev-page)
+    (define-key map (kbd "N") #'simple-git-file-history-last-page)
+    (define-key map (kbd "P") #'simple-git-file-history-first-page)
     (define-key map (kbd "q") #'quit-window)
-    (define-key map (kbd "n") #'next-line)
-    (define-key map (kbd "p") #'previous-line)
     (define-key map (kbd "g") #'simple-git-file-history-refresh)
+    (define-key map [mouse-1] #'simple-git-mouse-action)
     map)
   "Keymap for `simple-git-file-history-mode'.")
 
@@ -746,6 +837,16 @@
 (defvar-local simple-git--file-history-root nil
   "The git root for file history mode.")
 
+(defvar-local simple-git--file-history-page 0
+  "Current page number in file history view.")
+
+(defvar-local simple-git--file-history-total-commits nil
+  "Total number of commits for file.")
+
+(defun simple-git--get-file-total-commits (file)
+  "Get total number of commits for FILE."
+  (string-to-number (string-trim (simple-git--run "rev-list" "--count" "--follow" "HEAD" "--" file))))
+
 (defun simple-git-file-history-refresh ()
   "Refresh the file history buffer."
   (interactive)
@@ -753,23 +854,40 @@
     (let ((inhibit-read-only t)
           (pos (point))
           (file simple-git--file-history-file)
-          (root simple-git--file-history-root))
-      (erase-buffer)
-      (insert (propertize "File History" 'face 'simple-git-header-face) "\n")
-      (insert (propertize "File: " 'face 'simple-git-header-face)
-              file "\n\n")
-      (insert "Commands: "
-              (propertize "RET" 'face 'font-lock-keyword-face) " show diff  "
-              (propertize "v" 'face 'font-lock-keyword-face) "iew file at this point  "
-              (propertize "c" 'face 'font-lock-keyword-face) "ommit view  "
-              (propertize "g" 'face 'font-lock-keyword-face) " refresh  "
-              (propertize "q" 'face 'font-lock-keyword-face) "uit\n\n")
-      ;; Get log with file names to track renames
-      (let* ((default-directory root)
-             (output (simple-git--run "log" "--follow" "--name-status"
-                                      (format "-n%d" simple-git-log-count)
-                                      "--pretty=format:%h|%an|%ar|%s"
-                                      "--" file))
+          (root simple-git--file-history-root)
+          (skip (* simple-git--file-history-page simple-git-log-count)))
+      ;; Get total commits if not cached
+      (let ((default-directory root))
+        (unless simple-git--file-history-total-commits
+          (setq simple-git--file-history-total-commits (simple-git--get-file-total-commits file))))
+      (let ((max-page (max 0 (1- (ceiling (/ (float simple-git--file-history-total-commits) simple-git-log-count))))))
+        ;; Cap page number
+        (when (> simple-git--file-history-page max-page)
+          (setq simple-git--file-history-page max-page)
+          (setq skip (* simple-git--file-history-page simple-git-log-count)))
+        (erase-buffer)
+        (insert (propertize "File History" 'face 'simple-git-header-face)
+                (format " (page %d/%d)" (1+ simple-git--file-history-page) (1+ max-page))
+                "\n")
+        (insert (propertize "File: " 'face 'simple-git-header-face)
+                file "\n\n")
+        (insert "Commands: "
+                (propertize "RET" 'face 'font-lock-keyword-face) " show diff  "
+                (propertize "v" 'face 'font-lock-keyword-face) "iew file at this point  "
+                (propertize "c" 'face 'font-lock-keyword-face) "ommit view  "
+                (propertize "n" 'face 'font-lock-keyword-face) "ext page  "
+                (propertize "p" 'face 'font-lock-keyword-face) "rev page  "
+                (propertize "N" 'face 'font-lock-keyword-face) " last  "
+                (propertize "P" 'face 'font-lock-keyword-face) " first  "
+                (propertize "g" 'face 'font-lock-keyword-face) " refresh  "
+                (propertize "q" 'face 'font-lock-keyword-face) "uit\n\n")
+        ;; Get log with file names to track renames
+        (let* ((default-directory root)
+               (output (simple-git--run "log" "--follow" "--name-status"
+                                        (format "--skip=%d" skip)
+                                        (format "-n%d" simple-git-log-count)
+                                        "--pretty=format:%h|%an|%ar|%s"
+                                        "--" file))
              (lines (split-string output "\n"))
              (current-file file))
         ;; Parse output - each commit has format line, then blank, then file status
@@ -807,9 +925,10 @@
                             " "
                             (or subject "")
                             "\n")
-                    (put-text-property line-start (point) 'simple-git-commit-hash hash)
-                    (put-text-property line-start (point) 'simple-git-commit-file file-at-commit)))))
-            (setq i (1+ i)))))
+                    (put-text-property line-start (1- (point)) 'simple-git-commit-hash hash)
+                    (put-text-property line-start (1- (point)) 'simple-git-commit-file file-at-commit)
+                    (put-text-property line-start (1- (point)) 'mouse-face 'simple-git-highlight-face)))))
+            (setq i (1+ i))))))
       (goto-char (min pos (point-max))))))
 
 (defun simple-git-file-history-show-diff ()
@@ -911,13 +1030,44 @@
                                                       ("D" 'simple-git-unstaged-face)
                                                       (_ 'simple-git-untracked-face)))
                                   file "\n")
-                          (put-text-property line-start (point) 'simple-git-commit-file file)
-                          (put-text-property line-start (point) 'simple-git-commit-hash hash)))))))))
+                          (put-text-property line-start (1- (point)) 'simple-git-commit-file file)
+                          (put-text-property line-start (1- (point)) 'simple-git-commit-hash hash)
+                          (put-text-property line-start (1- (point)) 'mouse-face 'simple-git-highlight-face)))))))))
           (with-current-buffer buf
             (simple-git-commit-detail-mode)
             (goto-char (point-min)))
           (display-buffer buf))
       (message "No commit at point"))))
+
+(defun simple-git-file-history-next-page ()
+  "Go to next page of file history."
+  (interactive)
+  (setq simple-git--file-history-page (1+ simple-git--file-history-page))
+  (simple-git-file-history-refresh))
+
+(defun simple-git-file-history-prev-page ()
+  "Go to previous page of file history."
+  (interactive)
+  (when (> simple-git--file-history-page 0)
+    (setq simple-git--file-history-page (1- simple-git--file-history-page))
+    (simple-git-file-history-refresh)))
+
+(defun simple-git-file-history-first-page ()
+  "Go to first page of file history."
+  (interactive)
+  (setq simple-git--file-history-page 0)
+  (simple-git-file-history-refresh))
+
+(defun simple-git-file-history-last-page ()
+  "Go to last page of file history."
+  (interactive)
+  (let ((default-directory simple-git--file-history-root))
+    (unless simple-git--file-history-total-commits
+      (setq simple-git--file-history-total-commits
+            (simple-git--get-file-total-commits simple-git--file-history-file))))
+  (setq simple-git--file-history-page
+        (max 0 (1- (ceiling (/ (float simple-git--file-history-total-commits) simple-git-log-count)))))
+  (simple-git-file-history-refresh))
 
 ;;;###autoload
 (defun simple-git-file-history ()
@@ -934,7 +1084,250 @@
       (simple-git-file-history-mode)
       (setq simple-git--file-history-file file)
       (setq simple-git--file-history-root root)
+      (setq simple-git--file-history-page 0)
       (simple-git-file-history-refresh))
+    (pop-to-buffer buf)))
+
+;;; ============================================================================
+;;; Line Blame Mode
+;;; ============================================================================
+
+(defvar simple-git-line-blame-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") #'simple-git-line-blame-show-diff)
+    (define-key map (kbd "v") #'simple-git-line-blame-view-file)
+    (define-key map (kbd "c") #'simple-git-line-blame-show-commit)
+    (define-key map (kbd "q") #'quit-window)
+    (define-key map (kbd "n") #'next-line)
+    (define-key map (kbd "p") #'previous-line)
+    (define-key map [mouse-1] #'simple-git-mouse-action)
+    map)
+  "Keymap for `simple-git-line-blame-mode'.")
+
+(define-derived-mode simple-git-line-blame-mode special-mode "SimpleGit:LineBlame"
+  "Major mode for viewing line blame history."
+  (setq buffer-read-only t)
+  (setq truncate-lines t))
+
+(defvar-local simple-git--line-blame-file nil
+  "The file being viewed in line blame mode.")
+
+(defvar-local simple-git--line-blame-root nil
+  "The git root for line blame mode.")
+
+(defvar-local simple-git--line-blame-line nil
+  "The line number being blamed.")
+
+(defun simple-git--get-line-history (file line root)
+  "Get history of commits that modified LINE in FILE.
+Returns list of (hash author date subject file-at-commit)."
+  (let* ((default-directory root)
+         (results '())
+         (current-file file)
+         (current-line line)
+         (seen-hashes (make-hash-table :test 'equal))
+         (iterations 0)
+         (max-iterations 50))
+    ;; Iteratively trace the line back through history
+    (while (and current-file current-line (< iterations max-iterations))
+      (let* ((blame-output (simple-git--run "blame" "-L" (format "%d,%d" current-line current-line)
+                                            "--porcelain" "-w" current-file)))
+        (if (string-match "^\\([a-f0-9]+\\)" blame-output)
+            (let ((hash (match-string 1 blame-output)))
+              (if (or (string-prefix-p "00000000" hash)
+                      (gethash hash seen-hashes))
+                  ;; Uncommitted or already seen - stop
+                  (setq current-file nil)
+                ;; New commit found
+                (puthash hash t seen-hashes)
+                (let* ((info (simple-git--run "show" "--no-patch"
+                                              "--format=%h|%an|%ar|%s" hash))
+                       (parts (split-string (car (split-string info "\n")) "|"))
+                       (short-hash (nth 0 parts))
+                       (author (nth 1 parts))
+                       (date (nth 2 parts))
+                       (subject (nth 3 parts)))
+                  (push (list short-hash author date subject current-file hash) results))
+                ;; Find parent commit and line number
+                (let* ((parent-output (simple-git--run "rev-parse" (concat hash "^")))
+                       (parent (string-trim parent-output)))
+                  (if (or (string-empty-p parent) (string-prefix-p "fatal:" parent))
+                      (setq current-file nil)
+                    ;; Try to find the line in parent
+                    (let ((blame-parent (simple-git--run "blame" "-L" (format "%d,%d" current-line current-line)
+                                                         "--porcelain" "-w" parent "--" current-file)))
+                      (if (string-match "^\\([a-f0-9]+\\)" blame-parent)
+                          ;; Line exists in parent, continue tracing
+                          nil
+                        ;; Line doesn't exist in parent with same number, stop
+                        (setq current-file nil)))))))
+          ;; No blame output - stop
+          (setq current-file nil)))
+      (setq iterations (1+ iterations)))
+    (nreverse results)))
+
+(defun simple-git-line-blame-refresh ()
+  "Refresh the line blame buffer."
+  (let ((inhibit-read-only t)
+        (file simple-git--line-blame-file)
+        (root simple-git--line-blame-root)
+        (line simple-git--line-blame-line))
+    (erase-buffer)
+    (insert (propertize "Line History (Blame)" 'face 'simple-git-header-face) "\n")
+    (insert (propertize "File: " 'face 'simple-git-header-face) file "\n")
+    (insert (propertize "Line: " 'face 'simple-git-header-face) (number-to-string line) "\n\n")
+    (insert "Commands: "
+            (propertize "RET" 'face 'font-lock-keyword-face) " show diff  "
+            (propertize "v" 'face 'font-lock-keyword-face) "iew file at this point  "
+            (propertize "c" 'face 'font-lock-keyword-face) "ommit view  "
+            (propertize "q" 'face 'font-lock-keyword-face) "uit\n\n")
+    (let ((history (simple-git--get-line-history file line root)))
+      (if history
+          (dolist (entry history)
+            (let* ((hash (nth 0 entry))
+                   (author (nth 1 entry))
+                   (date (nth 2 entry))
+                   (subject (nth 3 entry))
+                   (file-at-commit (nth 4 entry))
+                   (full-hash (nth 5 entry))
+                   (line-start (point)))
+              (insert (propertize hash 'face 'simple-git-commit-hash-face)
+                      " "
+                      (propertize (format "%-20s" (truncate-string-to-width (or author "") 20))
+                                  'face 'simple-git-commit-author-face)
+                      " "
+                      (propertize (format "%-15s" (truncate-string-to-width (or date "") 15))
+                                  'face 'simple-git-commit-date-face)
+                      " "
+                      (or subject "")
+                      "\n")
+              (put-text-property line-start (1- (point)) 'simple-git-commit-hash full-hash)
+              (put-text-property line-start (1- (point)) 'simple-git-commit-file file-at-commit)
+              (put-text-property line-start (1- (point)) 'mouse-face 'simple-git-highlight-face)))
+        (insert "  (no history found)\n")))
+    (goto-char (point-min))))
+
+(defun simple-git-line-blame-show-diff ()
+  "Show diff for commit at point."
+  (interactive)
+  (let* ((hash (get-text-property (line-beginning-position) 'simple-git-commit-hash))
+         (file (get-text-property (line-beginning-position) 'simple-git-commit-file))
+         (root simple-git--line-blame-root)
+         (return-buf (current-buffer)))
+    (if (and hash file)
+        (let ((buf (get-buffer-create "*simple-git-diff*")))
+          (with-current-buffer buf
+            (let ((inhibit-read-only t)
+                  (default-directory root))
+              (erase-buffer)
+              (call-process "git" nil t nil "show" "--format=" hash "--" file)
+              (goto-char (point-min))
+              (simple-git-diff-mode)
+              (setq simple-git--diff-return-buffer return-buf)))
+          (display-buffer buf))
+      (message "No commit at point"))))
+
+(defun simple-git-line-blame-view-file ()
+  "View file at commit at point."
+  (interactive)
+  (let* ((hash (get-text-property (line-beginning-position) 'simple-git-commit-hash))
+         (file (get-text-property (line-beginning-position) 'simple-git-commit-file))
+         (root simple-git--line-blame-root))
+    (if (and hash file)
+        (let* ((buf-name (format "*simple-git:%s@%s*" (file-name-nondirectory file) (substring hash 0 7)))
+               (buf (get-buffer-create buf-name)))
+          (with-current-buffer buf
+            (let ((inhibit-read-only t)
+                  (default-directory root))
+              (erase-buffer)
+              (call-process "git" nil t nil "show" (concat hash ":" file))
+              (goto-char (point-min))
+              (let ((mode (assoc-default file auto-mode-alist 'string-match)))
+                (when mode (funcall mode)))
+              (setq buffer-read-only t)))
+          (let ((main-window (or (seq-find (lambda (w)
+                                             (not (window-parameter w 'window-side)))
+                                           (window-list))
+                                 (selected-window))))
+            (select-window main-window)
+            (switch-to-buffer buf)))
+      (message "No commit at point"))))
+
+(defun simple-git-line-blame-show-commit ()
+  "Show full commit details for commit at point."
+  (interactive)
+  (let* ((hash (get-text-property (line-beginning-position) 'simple-git-commit-hash))
+         (root simple-git--line-blame-root))
+    (if hash
+        (let ((buf (get-buffer-create "*simple-git-commit-detail*")))
+          (with-current-buffer buf
+            (let ((inhibit-read-only t)
+                  (default-directory root))
+              (erase-buffer)
+              (let* ((info (simple-git--run "show" "--no-patch"
+                                            "--format=%h%n%an%n%ar%n%s%n%b" hash))
+                     (lines (split-string info "\n"))
+                     (short-hash (nth 0 lines))
+                     (author (nth 1 lines))
+                     (date (nth 2 lines))
+                     (subject (nth 3 lines))
+                     (body (string-trim (mapconcat #'identity (nthcdr 4 lines) "\n"))))
+                (insert (propertize "Commit: " 'face 'simple-git-header-face)
+                        (propertize short-hash 'face 'simple-git-commit-hash-face) "\n")
+                (insert (propertize "Author: " 'face 'simple-git-header-face)
+                        (propertize author 'face 'simple-git-commit-author-face) "\n")
+                (insert (propertize "Date:   " 'face 'simple-git-header-face)
+                        (propertize date 'face 'simple-git-commit-date-face) "\n\n")
+                (insert (propertize subject 'face 'bold) "\n")
+                (when (not (string-empty-p body))
+                  (insert "\n" body "\n"))
+                (insert "\n")
+                (insert "Commands: "
+                        (propertize "RET" 'face 'font-lock-keyword-face) " show diff  "
+                        (propertize "v" 'face 'font-lock-keyword-face) "iew file at this point  "
+                        (propertize "q" 'face 'font-lock-keyword-face) "uit\n\n")
+                (let* ((files-output (simple-git--run "show" "--name-status" "--format=" hash))
+                       (file-lines (split-string files-output "\n" t)))
+                  (insert (propertize "Changed files:\n" 'face 'simple-git-header-face))
+                  (dolist (file-line file-lines)
+                    (when (string-match "^\\([AMDRT]\\)\t\\(.+\\)$" file-line)
+                      (let ((status (match-string 1 file-line))
+                            (file (match-string 2 file-line)))
+                        (let ((line-start (point)))
+                          (insert "  "
+                                  (propertize (format "[%s] " status)
+                                              'face (pcase status
+                                                      ("A" 'simple-git-staged-face)
+                                                      ("D" 'simple-git-unstaged-face)
+                                                      (_ 'simple-git-untracked-face)))
+                                  file "\n")
+                          (put-text-property line-start (1- (point)) 'simple-git-commit-file file)
+                          (put-text-property line-start (1- (point)) 'simple-git-commit-hash hash)
+                          (put-text-property line-start (1- (point)) 'mouse-face 'simple-git-highlight-face)))))))))
+          (with-current-buffer buf
+            (simple-git-commit-detail-mode)
+            (goto-char (point-min)))
+          (display-buffer buf))
+      (message "No commit at point"))))
+
+;;;###autoload
+(defun simple-git-line-blame ()
+  "Show blame history for the current line."
+  (interactive)
+  (unless (simple-git--in-repo-p)
+    (user-error "Not in a Git repository"))
+  (unless buffer-file-name
+    (user-error "Buffer is not visiting a file"))
+  (let* ((root (simple-git--root))
+         (file (file-relative-name buffer-file-name root))
+         (line (line-number-at-pos))
+         (buf (get-buffer-create (format "*simple-git-blame:%s:%d*" (file-name-nondirectory file) line))))
+    (with-current-buffer buf
+      (simple-git-line-blame-mode)
+      (setq simple-git--line-blame-file file)
+      (setq simple-git--line-blame-root root)
+      (setq simple-git--line-blame-line line)
+      (simple-git-line-blame-refresh))
     (pop-to-buffer buf)))
 
 ;;; ============================================================================
@@ -945,9 +1338,12 @@
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") #'simple-git-branch-graph-show-commit)
     (define-key map (kbd "q") #'quit-window)
-    (define-key map (kbd "n") #'next-line)
-    (define-key map (kbd "p") #'previous-line)
     (define-key map (kbd "g") #'simple-git-branch-graph-refresh)
+    (define-key map (kbd "n") #'simple-git-branch-graph-next-page)
+    (define-key map (kbd "p") #'simple-git-branch-graph-prev-page)
+    (define-key map (kbd "N") #'simple-git-branch-graph-last-page)
+    (define-key map (kbd "P") #'simple-git-branch-graph-first-page)
+    (define-key map [mouse-1] #'simple-git-mouse-action)
     map)
   "Keymap for `simple-git-branch-graph-mode'.")
 
@@ -955,6 +1351,12 @@
   "Major mode for viewing branch graph."
   (setq buffer-read-only t)
   (setq truncate-lines t))
+
+(defvar-local simple-git--graph-page 0
+  "Current page number in graph view.")
+
+(defvar-local simple-git--graph-total-commits nil
+  "Total number of commits in graph.")
 
 (defface simple-git-graph-branch-1
   '((t :foreground "#e06c75"))
@@ -1014,24 +1416,44 @@
       (setq i (1+ i)))
     result))
 
+(defun simple-git--get-all-commits-count ()
+  "Get total number of commits across all branches."
+  (string-to-number (string-trim (simple-git--run "rev-list" "--count" "--all"))))
+
 (defun simple-git-branch-graph-refresh ()
   "Refresh the branch graph buffer."
   (interactive)
   (when (eq major-mode 'simple-git-branch-graph-mode)
     (let ((inhibit-read-only t)
           (pos (point))
-          (default-directory (simple-git--root)))
-      (erase-buffer)
-      (insert (propertize "Branch Graph" 'face 'simple-git-header-face) "\n\n")
-      (insert "Commands: "
-              (propertize "RET" 'face 'font-lock-keyword-face) " show commit  "
-              (propertize "g" 'face 'font-lock-keyword-face) " refresh  "
-              (propertize "q" 'face 'font-lock-keyword-face) "uit\n\n")
-      ;; Get graph with commit info
-      (let* ((output (simple-git--run "log" "--all" "--graph"
-                                      (format "-n%d" simple-git-branch-graph-count)
-                                      "--pretty=format:%h|%an|%ar|%s|%d"))
-             (lines (split-string output "\n")))
+          (default-directory (simple-git--root))
+          (skip (* simple-git--graph-page simple-git-branch-graph-count)))
+      ;; Get total commits if not cached
+      (unless simple-git--graph-total-commits
+        (setq simple-git--graph-total-commits (simple-git--get-all-commits-count)))
+      (let ((max-page (max 0 (1- (ceiling (/ (float simple-git--graph-total-commits) simple-git-branch-graph-count))))))
+        ;; Cap page number
+        (when (> simple-git--graph-page max-page)
+          (setq simple-git--graph-page max-page)
+          (setq skip (* simple-git--graph-page simple-git-branch-graph-count)))
+        (erase-buffer)
+        (insert (propertize "Branch Graph" 'face 'simple-git-header-face)
+                (format " (page %d/%d)" (1+ simple-git--graph-page) (1+ max-page))
+                "\n\n")
+        (insert "Commands: "
+                (propertize "RET" 'face 'font-lock-keyword-face) " show commit  "
+                (propertize "n" 'face 'font-lock-keyword-face) "ext page  "
+                (propertize "p" 'face 'font-lock-keyword-face) "rev page  "
+                (propertize "N" 'face 'font-lock-keyword-face) " last  "
+                (propertize "P" 'face 'font-lock-keyword-face) " first  "
+                (propertize "g" 'face 'font-lock-keyword-face) " refresh  "
+                (propertize "q" 'face 'font-lock-keyword-face) "uit\n\n")
+        ;; Get graph with commit info
+        (let* ((output (simple-git--run "log" "--all" "--graph"
+                                        (format "--skip=%d" skip)
+                                        (format "-n%d" simple-git-branch-graph-count)
+                                        "--pretty=format:%h|%an|%ar|%s|%d"))
+               (lines (split-string output "\n")))
         (dolist (line lines)
           (if (string-match "^\\([*| /\\\\]+\\)\\([a-f0-9]+\\)|\\([^|]*\\)|\\([^|]*\\)|\\([^|]*\\)|\\(.*\\)$" line)
               ;; Line with commit info
@@ -1050,11 +1472,40 @@
                 (insert (propertize (truncate-string-to-width (or author "") 15)
                                     'face 'simple-git-commit-author-face) " ")
                 (insert (or subject "") "\n")
-                (put-text-property line-start (point) 'simple-git-commit-hash hash))
+                (put-text-property line-start (1- (point)) 'simple-git-commit-hash hash)
+                (put-text-property line-start (1- (point)) 'mouse-face 'simple-git-highlight-face))
             ;; Graph-only line (no commit)
             (when (string-match "^\\([*| /\\\\]+\\)$" line)
-              (insert (simple-git--colorize-graph (match-string 1 line)) "\n")))))
+              (insert (simple-git--colorize-graph (match-string 1 line)) "\n"))))))
       (goto-char (min pos (point-max))))))
+
+(defun simple-git-branch-graph-next-page ()
+  "Go to next page of graph."
+  (interactive)
+  (setq simple-git--graph-page (1+ simple-git--graph-page))
+  (simple-git-branch-graph-refresh))
+
+(defun simple-git-branch-graph-prev-page ()
+  "Go to previous page of graph."
+  (interactive)
+  (when (> simple-git--graph-page 0)
+    (setq simple-git--graph-page (1- simple-git--graph-page))
+    (simple-git-branch-graph-refresh)))
+
+(defun simple-git-branch-graph-first-page ()
+  "Go to first page of graph."
+  (interactive)
+  (setq simple-git--graph-page 0)
+  (simple-git-branch-graph-refresh))
+
+(defun simple-git-branch-graph-last-page ()
+  "Go to last page of graph."
+  (interactive)
+  (unless simple-git--graph-total-commits
+    (setq simple-git--graph-total-commits (simple-git--get-all-commits-count)))
+  (setq simple-git--graph-page
+        (max 0 (1- (ceiling (/ (float simple-git--graph-total-commits) simple-git-branch-graph-count)))))
+  (simple-git-branch-graph-refresh))
 
 (defun simple-git-branch-graph-show-commit ()
   "Show commit details for commit at point."
@@ -1106,8 +1557,9 @@
                                                   ("D" 'simple-git-unstaged-face)
                                                   (_ 'simple-git-untracked-face)))
                               file "\n")
-                      (put-text-property line-start (point) 'simple-git-commit-file file)
-                      (put-text-property line-start (point) 'simple-git-commit-hash hash)))))))))
+                      (put-text-property line-start (1- (point)) 'simple-git-commit-file file)
+                      (put-text-property line-start (1- (point)) 'simple-git-commit-hash hash)
+                      (put-text-property line-start (1- (point)) 'mouse-face 'simple-git-highlight-face)))))))))
       (with-current-buffer buf
         (simple-git-commit-detail-mode)
         (goto-char (point-min)))

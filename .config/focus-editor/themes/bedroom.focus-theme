@@ -1,41 +1,41 @@
 [25]  # Version number. Do not delete.
 
 [colors]
-background0:                            141B2BFF
-background1:                            141B2BFF
-background2:                            141B2BFF
-background3:                            141B2BFF
-background4:                            2B344AFF
+background0:                            142B29FF
+background1:                            142b29FF
+background2:                            142b29FF
+background3:                            142B29FF
+background4:                            091212FF
 
 # NOTE: region_scope colors only work for Jai at the moment
-region_scope_export:                    141B2BFF
-region_scope_file:                      1F2638FF
-region_scope_module:                    111621FF
+region_scope_export:                    142B29FF
+region_scope_file:                      142B29FF
+region_scope_module:                    142B29FF
 
 region_header:                          1F2638FF
 region_success:                         226022FF
 region_warning:                         986032FF
 region_error:                           772222FF
-region_heredoc:                         000000FF
+region_heredoc:                         142B29FF
 
-selection_active:                       354770FF
-selection_inactive:                     263351FF
+selection_active:                       224D49FF
+selection_inactive:                     222222FF
 selection_highlight:                    FCEDFC26
 search_result_active:                   8E772EFF
 search_result_inactive:                 FCEDFC83
-scrollbar:                              141B2BFF
-scrollbar_hover:                        3C4964FF
-scrollbar_background:                   2B344AFF
-cursor:                                 9AD3EAFF
-cursor_inactive:                        87919DFF
+scrollbar:                              142b29FF
+scrollbar_hover:                        0F201FFF
+scrollbar_background:                   091212FF
+cursor:                                 DADEE5FF
+cursor_inactive:                        879C9DFF
 paste_animation:                        1C4449FF
-splitter:                               141B2BFF
+splitter:                               142B29FF
 splitter_hover:                         1F2638FF
 ruler:                                  FCEDFC26
 indent_guide:                           FCEDFC26
 letter_highlight:                       85B8DEFF
-list_cursor_lite:                       3C496488
-list_cursor:                            3C4964FF
+list_cursor_lite:                       0F201FFF
+list_cursor:                            0F201FFF
 shadow_dark:                            0E161C7F
 shadow_transparent:                     0E161C00
 text_input_label:                       3B4450FF
@@ -43,7 +43,7 @@ char_under_cursor:                      000000FF
 bracket_highlight:                      E8FCFE30
 
 ui_default:                             DADEE5FF
-ui_dim:                                 87919DFF
+ui_dim:                                 879c9dFF
 ui_neutral:                             4C4C4CFF
 ui_warning:                             F8AD34FF
 ui_warning_dim:                         986032FF
@@ -51,11 +51,11 @@ ui_error:                               772222FF
 ui_error_bright:                        FF0000FF
 ui_success:                             227722FF
 
-build_panel_background:                 000000FF
+build_panel_background:                 050B0BFF
 build_panel_scrollbar:                  33CCCC19
-build_panel_scrollbar_hover:            3C4964FF
-build_panel_scrollbar_background:       2B344AFF
-build_panel_title_bar:                  2B344AFF
+build_panel_scrollbar_hover:            0F201FFF
+build_panel_scrollbar_background:       091212FF
+build_panel_title_bar:                  091212FF
 
 code_default:                           DADEE5FF
 code_invalid:                           FF0000FF
@@ -73,8 +73,8 @@ code_error:                             FF0000FF
 code_warning:                           E4D97DFF
 code_highlight:                         F9DD03FF
 
-code_comment:                           87919DFF
-code_multiline_comment:                 87919DFF
+code_comment:                           879c9dFF
+code_multiline_comment:                 879c9dFF
 
 code_operation:                         DADEE5FF
 code_punctuation:                       DADEE5FF
@@ -103,7 +103,7 @@ code_header5:                           E0AD82FF
 code_header6:                           E0AD82FF
 
 # Added after migration to version [18]
-active_pane_border:                     2B344AFF
+active_pane_border:                     091212FF
 inactive_pane_dim_overlay:              050505FF
 
 # Added after migration to version [22]
@@ -111,8 +111,8 @@ code_comment_highlight1:                F9DD03FF
 code_comment_highlight2:                FF0000FF
 code_comment_highlight3:                C47616FF
 code_comment_highlight4:                BBABC3FF
-cursor_line_highlight:                  2B344AFF
-color_preview_title_bar:                2B344AFF
+cursor_line_highlight:                  091212FF
+color_preview_title_bar:                091212FF
 code_addition:                          33B333FF
 code_deletion:                          E64D4DFF
 region_addition:                        2260224C

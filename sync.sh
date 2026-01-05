@@ -119,6 +119,27 @@ sync_emacs_dir() {
     done
 }
 
+sync_sublime_dir() {
+    local src_base="$1"
+    local dest_base="$2"
+    local action="$3"
+
+    # Sync the entire Packages/User directory (clear destination first)
+    local src_dir="$src_base/Packages/User"
+    local dest_dir="$dest_base/Packages/User"
+    
+    if [[ -d "$src_dir" ]]; then
+        # Clear destination directory
+        if [[ -d "$dest_dir" ]]; then
+            rm -rf "$dest_dir"
+        fi
+        # Ensure parent directory exists
+        ensure_dir "$(dirname "$dest_dir")"
+        # Copy directory
+        cp -r "$src_dir" "$dest_dir"
+    fi
+}
+
 push_dotfiles() {
     echo "Pushing dotfiles from repo to home directory..."
 
@@ -127,11 +148,24 @@ push_dotfiles() {
         sync_emacs_dir "$DOTFILES_DIR/.emacs.d" "$HOME_DIR/.emacs.d" "Push"
     fi
 
+    # Handle Sublime Text specially (clear folders before syncing)
+    if [[ -d "$DOTFILES_DIR/.config/Sublime Text" ]]; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sync_sublime_dir "$DOTFILES_DIR/.config/Sublime Text" "/Users/${USER}/Library/Application Support/Sublime Text" "Push"
+        else
+            sync_sublime_dir "$DOTFILES_DIR/.config/Sublime Text" "$HOME_DIR/.config/Sublime Text" "Push"
+        fi
+    fi
+
     local count=0
     while IFS= read -r src_file; do
         rel_path="${src_file#$DOTFILES_DIR/}"
         # Skip .emacs.d files (handled above)
         if [[ "$rel_path" == .emacs.d/* ]]; then
+            continue
+        fi
+        # Skip Sublime Text files (handled above)
+        if [[ "$rel_path" == .config/Sublime\ Text/* ]]; then
             continue
         fi
         dest_file="$(get_system_path "$rel_path")"
@@ -150,11 +184,26 @@ pull_dotfiles() {
         sync_emacs_dir "$HOME_DIR/.emacs.d" "$DOTFILES_DIR/.emacs.d" "Pull"
     fi
 
+    # Handle Sublime Text specially (clear folders before syncing)
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        if [[ -d "/Users/${USER}/Library/Application Support/Sublime Text" ]]; then
+            sync_sublime_dir "/Users/${USER}/Library/Application Support/Sublime Text" "$DOTFILES_DIR/.config/Sublime Text" "Pull"
+        fi
+    else
+        if [[ -d "$HOME_DIR/.config/Sublime Text" ]]; then
+            sync_sublime_dir "$HOME_DIR/.config/Sublime Text" "$DOTFILES_DIR/.config/Sublime Text" "Pull"
+        fi
+    fi
+
     local count=0
     while IFS= read -r dest_file; do
         rel_path="${dest_file#$DOTFILES_DIR/}"
         # Skip .emacs.d files (handled above)
         if [[ "$rel_path" == .emacs.d/* ]]; then
+            continue
+        fi
+        # Skip Sublime Text files (handled above)
+        if [[ "$rel_path" == .config/Sublime\ Text/* ]]; then
             continue
         fi
         src_file="$(get_system_path "$rel_path")"

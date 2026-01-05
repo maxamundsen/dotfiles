@@ -402,7 +402,7 @@ Shift-Cmd-F8                    go_to_previous_build_error_in_side_pane
 
 [[style]]
 
-theme: basic-light
+theme: bedroom
 
 [fonts]
 font:          default

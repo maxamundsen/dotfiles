@@ -200,5 +200,6 @@
     "chat.agent.enabled": false,
     "chat.disableAIFeatures": true,
     "workbench.preferredDarkColorTheme": "Visual Studio Dark",
-    "workbench.preferredLightColorTheme": "Visual Studio Light"
+    "workbench.preferredLightColorTheme": "Visual Studio Light",
+    "workbench.colorTheme": "Visual Studio Light",
 }

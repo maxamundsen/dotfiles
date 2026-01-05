@@ -1,18 +1,16 @@
-<!-- Customized by Max Amundsen -->
-<!--  Original: https://github.com/filmgirl/TextMate-Themes/blob/master/happydeluxe.tmTheme -->
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>name</key>
-	<string>Massimo Custom</string>
+	<string>Bedroom</string>
 	<key>settings</key>
 	<array>
 		<dict>
 			<key>settings</key>
 			<dict>
 				<key>background</key>
-				<string>#141B2BFF</string>
+				<string>#142b29FF</string>
 				<key>caret</key>
 				<string>#DADEE5FF</string>
 				<key>foreground</key>
@@ -22,7 +20,7 @@
 				<key>lineHighlight</key>
 				<string>#00000078</string>
 				<key>selection</key>
-				<string>#15285A</string>
+				<string>#224d49</string>
 			</dict>
 		</dict>
 		<dict>
@@ -44,7 +42,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#87919DFF</string>
+				<string>#879c9dFF</string>
 			</dict>
 		</dict>
 		<dict>
