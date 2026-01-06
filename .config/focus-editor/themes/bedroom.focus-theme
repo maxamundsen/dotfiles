@@ -5,7 +5,7 @@ background0:                            142B29FF
 background1:                            142b29FF
 background2:                            142b29FF
 background3:                            142B29FF
-background4:                            091212FF
+background4:                            112523FF
 
 # NOTE: region_scope colors only work for Jai at the moment
 region_scope_export:                    142B29FF
@@ -25,7 +25,7 @@ search_result_active:                   8E772EFF
 search_result_inactive:                 FCEDFC83
 scrollbar:                              142b29FF
 scrollbar_hover:                        0F201FFF
-scrollbar_background:                   091212FF
+scrollbar_background:                   112523FF
 cursor:                                 DADEE5FF
 cursor_inactive:                        879C9DFF
 paste_animation:                        1C4449FF
@@ -51,11 +51,11 @@ ui_error:                               772222FF
 ui_error_bright:                        FF0000FF
 ui_success:                             227722FF
 
-build_panel_background:                 050B0BFF
+build_panel_background:                 142B29FF
 build_panel_scrollbar:                  33CCCC19
 build_panel_scrollbar_hover:            0F201FFF
-build_panel_scrollbar_background:       091212FF
-build_panel_title_bar:                  091212FF
+build_panel_scrollbar_background:       112523FF
+build_panel_title_bar:                  112523FF
 
 code_default:                           DADEE5FF
 code_invalid:                           FF0000FF
@@ -103,7 +103,7 @@ code_header5:                           E0AD82FF
 code_header6:                           E0AD82FF
 
 # Added after migration to version [18]
-active_pane_border:                     091212FF
+active_pane_border:                     1A9087FF
 inactive_pane_dim_overlay:              050505FF
 
 # Added after migration to version [22]
@@ -111,8 +111,8 @@ code_comment_highlight1:                F9DD03FF
 code_comment_highlight2:                FF0000FF
 code_comment_highlight3:                C47616FF
 code_comment_highlight4:                BBABC3FF
-cursor_line_highlight:                  091212FF
-color_preview_title_bar:                091212FF
+cursor_line_highlight:                  112523FF
+color_preview_title_bar:                112523FF
 code_addition:                          33B333FF
 code_deletion:                          E64D4DFF
 region_addition:                        2260224C

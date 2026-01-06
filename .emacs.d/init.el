@@ -474,37 +474,6 @@ If any panel is visible, close all. If none visible, open all."
         (set-window-parameter new-window 'no-delete-other-windows t)
         new-window))))
 
-;; Register opencode buffer to always use right panel
-(add-to-list 'display-buffer-alist
-             '("\\*simple-opencode\\*"
-               (my-display-in-right-panel)
-               (side . right)
-               (slot . 0)
-               (window-width . 0.28)))
-
-(defun my-opencode-panel-toggle ()
-  "Toggle the OpenCode AI panel on the right side of the screen."
-  (interactive)
-  (let ((window (my-get-right-panel-window)))
-    (if window
-        ;; Panel is visible - close it
-        (delete-window window)
-      ;; Panel not visible - open it
-      (simple-opencode))))
-
-(defun my-opencode-panel-send-region ()
-  "Send selected region to OpenCode panel with a prompt."
-  (interactive)
-  (if (use-region-p)
-      (let ((start (region-beginning))
-            (end (region-end)))
-        ;; Open panel if not visible
-        (unless (my-get-right-panel-window)
-          (my-opencode-panel-toggle))
-        ;; Send region
-        (simple-opencode-send-region start end))
-    (message "No region selected")))
-
 ;;; ============================================================================
 ;;; BACKUP & AUTOSAVE SETTINGS
 ;;; ============================================================================
