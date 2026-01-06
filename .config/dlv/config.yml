@@ -1,0 +1,5 @@
+# Delve debugger configuration
+# https://github.com/go-delve/delve/blob/master/Documentation/cli/README.md
+
+# Maximum string length to display (default: 64)
+max-string-len: 1000
