@@ -5,7 +5,15 @@
         "command": "-workbench.action.zoomIn"
     },
     {
+        "key": "ctrl+=",
+        "command": "-workbench.action.zoomIn"
+    },
+    {
         "key": "cmd+=",
+        "command": "editor.action.fontZoomIn"
+    },
+    {
+        "key": "ctrl+=",
         "command": "editor.action.fontZoomIn"
     },
     {
@@ -13,7 +21,15 @@
         "command": "editor.action.fontZoomOut"
     },
     {
+        "key": "ctrl+-",
+        "command": "editor.action.fontZoomOut"
+    },
+    {
         "key": "cmd+-",
+        "command": "-workbench.action.zoomOut"
+    },
+    {
+        "key": "ctrl+-",
         "command": "-workbench.action.zoomOut"
     },
     {
@@ -21,7 +37,15 @@
         "command": "editor.action.fontZoomReset"
     },
     {
+        "key": "ctrl+0",
+        "command": "editor.action.fontZoomReset"
+    },
+    {
         "key": "cmd+0",
+        "command": "-workbench.action.focusSideBar"
+    },
+    {
+        "key": "ctrl+0",
         "command": "-workbench.action.focusSideBar"
     },
     {
@@ -33,7 +57,15 @@
         "command": "-workbench.action.gotoLine"
     },
     {
+        "key": "ctrl+g",
+        "command": "workbench.action.gotoLine"
+    },
+    {
         "key": "cmd+shift+a",
+        "command": "editor.action.selectHighlights"
+    },
+    {
+        "key": "ctrl+shift+a",
         "command": "editor.action.selectHighlights"
     },
     {
@@ -42,6 +74,17 @@
     },
     {
         "key": "cmd+\\",
+        "command": "runCommands",
+        "args": {
+            "commands": [
+                "workbench.action.closeSidebar",
+                "workbench.action.closeAuxiliaryBar",
+                "workbench.action.closePanel",
+            ]
+        }
+    },
+    {
+        "key": "ctrl+\\",
         "command": "runCommands",
         "args": {
             "commands": [
@@ -65,7 +108,24 @@
         }
     },
     {
+        "key": "ctrl+shift+\\",
+        "command": "runCommands",
+        "args": {
+            "commands": [
+                "workbench.action.closeSidebar",
+                "workbench.action.closeAuxiliaryBar",
+                "workbench.action.closePanel",
+                "workbench.action.closeEditorsInOtherGroups",
+                "workbench.action.closeOtherEditors"
+            ]
+        }
+    },
+    {
         "key": "alt+cmd+backspace",
+        "command": "-editor.action.removeBrackets",
+    },
+    {
+        "key": "alt+ctrl+backspace",
         "command": "-editor.action.removeBrackets",
     },
     {
@@ -85,11 +145,19 @@
         "command": "-workbench.actions.view.problems",
     },
     {
+        "key": "shift+ctrl+m",
+        "command": "-workbench.actions.view.problems",
+    },
+    {
         "key": "f3",
         "command": "workbench.action.toggleLightDarkThemes"
     },
     {
         "key": "shift+cmd+/",
+        "command": "claude-vscode.sidebar.open"
+    },
+    {
+        "key": "shift+ctrl+/",
         "command": "claude-vscode.sidebar.open"
     }
 ]
