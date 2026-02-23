@@ -66,7 +66,6 @@
     "extensions.autoCheckUpdates": false,
     "extensions.autoUpdate": false,
     "update.mode": "manual",
-    "window.density.editorTabHeight": "compact",
     "C_Cpp.intelliSenseEngine": "disabled",
     "C_Cpp.clang_format_style": "Visual Studio",
     "diffEditor.ignoreTrimWhitespace": false,
@@ -201,30 +200,5 @@
     "chat.disableAIFeatures": true,
     "workbench.preferredDarkColorTheme": "Visual Studio Dark",
     "workbench.preferredLightColorTheme": "Visual Studio Light",
-    "workbench.colorTheme": "Visual Studio Dark",
-    "workbench.colorCustomizations": {
-        "[Visual Studio Dark]": {
-            "editor.background": "#000000",
-            "terminal.background": "#1E1E1E",
-            "panel.background": "#1E1E1E"
-        }
-    },
-    "editor.tokenColorCustomizations": {
-        "[Visual Studio Dark]": {
-            "textMateRules": [
-                {
-                    "scope": [
-                        "comment",
-                        "comment.block",
-                        "comment.block.documentation",
-                        "comment.line"
-                    ],
-                    "settings": {
-                        "foreground": "#FFFF00"
-                    }
-                }
-            ]
-        }
-    },
-    "claudeCode.useCtrlEnterToSend": true
+    "workbench.colorTheme": "Default Dark+",
 }
