@@ -200,5 +200,8 @@
     "chat.disableAIFeatures": true,
     "workbench.preferredDarkColorTheme": "Visual Studio Dark",
     "workbench.preferredLightColorTheme": "Visual Studio Light",
-    "workbench.colorTheme": "Default Dark+",
+    "workbench.colorTheme": "Visual Studio Dark",
+    "clangd.path": "c:\\Users\\mta\\AppData\\Roaming\\Code\\User\\globalStorage\\llvm-vs-code-extensions.vscode-clangd\\install\\21.1.8\\clangd_21.1.8\\bin\\clangd.exe",
+    "window.titleBarStyle": "custom",
+    "window.customMenuBarAltFocus": false
 }
